@@ -11,6 +11,25 @@ export function knockoutWinPoints(stage) {
   return pointsByStage[stage] || 0;
 }
 
+const TEAM_NAME_ALIASES = {
+  "Bosnia & Herzegovina": "bosnia and herzegovina",
+  "Cape Verde": "cabo verde",
+  "Czech Republic": "czechia",
+  "Côte d'Ivoire": "ivory coast",
+  "Democratic Republic of the Congo": "dr congo",
+  Korea: "south korea",
+  "South Korea": "south korea",
+  "United States": "usa",
+};
+
+function canonicalTeamName(teamName) {
+  return TEAM_NAME_ALIASES[teamName] || teamName.toLowerCase();
+}
+
+function isSameTeam(teamA, teamB) {
+  return canonicalTeamName(teamA) === canonicalTeamName(teamB);
+}
+
 export function getMatchWinner(match) {
   if (match.homeScore > match.awayScore) {
     return match.homeTeam;
@@ -40,8 +59,8 @@ export function calculateTeamPoints(teamName, matches, groupBonuses) {
   matches
     .filter((match) => match.status === "completed")
     .forEach((match) => {
-      const isHomeTeam = match.homeTeam === teamName;
-      const isAwayTeam = match.awayTeam === teamName;
+      const isHomeTeam = isSameTeam(match.homeTeam, teamName);
+      const isAwayTeam = isSameTeam(match.awayTeam, teamName);
 
       if (!isHomeTeam && !isAwayTeam) {
         return;
@@ -68,14 +87,14 @@ export function calculateTeamPoints(teamName, matches, groupBonuses) {
 
       const winner = getMatchWinner(match);
 
-      if (winner === teamName) {
+      if (winner && isSameTeam(winner, teamName)) {
         const winPoints = knockoutWinPoints(match.stage);
         points += winPoints;
         scoringLog.push(`+${winPoints} ${match.stage} win vs ${opponent}`);
         return;
       }
 
-      if (winner && winner !== teamName) {
+      if (winner && !isSameTeam(winner, teamName)) {
         if (match.hasPenaltyShootout) {
           points += 2;
           scoringLog.push(`+2 lost in PKs vs ${opponent}`);
@@ -88,19 +107,15 @@ export function calculateTeamPoints(teamName, matches, groupBonuses) {
 
   const bonus = groupBonuses[teamName];
 
-  if (bonus?.advanced) {
-    points += 3;
-    scoringLog.push("+3 advanced to knockouts");
-  }
-
   if (bonus?.groupFinish === 1) {
+    points += 3;
+    scoringLog.push("+3 won group");
+  } else if (bonus?.groupFinish === 2) {
     points += 2;
-    scoringLog.push("+2 won group");
-  }
-
-  if (bonus?.groupFinish === 2) {
+    scoringLog.push("+2 finished second in group");
+  } else if (bonus?.advanced) {
     points += 1;
-    scoringLog.push("+1 finished second in group");
+    scoringLog.push("+1 advanced from third place");
   }
 
   return { points, scoringLog };
@@ -151,8 +166,8 @@ export function calculateWorldCupGroupStandings(groups, matches) {
       };
 
       completedGroupMatches.forEach((match) => {
-        const isHomeTeam = match.homeTeam === teamName;
-        const isAwayTeam = match.awayTeam === teamName;
+        const isHomeTeam = isSameTeam(match.homeTeam, teamName);
+        const isAwayTeam = isSameTeam(match.awayTeam, teamName);
 
         if (!isHomeTeam && !isAwayTeam) {
           return;

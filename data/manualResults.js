@@ -1,9 +1,9 @@
 export const manualMatches = [];
 
 export const groupBonuses = {
-  // groupFinish: 1 means group winner
-  // groupFinish: 2 means second place
-  // Third-place qualifiers should use advanced: true but no groupFinish bonus.
+  // groupFinish: 1 means group winner (+3)
+  // groupFinish: 2 means second place (+2)
+  // Third-place qualifiers should use advanced: true but no groupFinish bonus (+1).
   // Teams not listed receive no advancement or placement bonus.
 };
 

@@ -1,35 +1,49 @@
 export const participants = [
   {
     name: "Tej",
-    teams: [],
+    teams: ["Argentina", "Norway", "Morocco", "Turkey", "Senegal", "Iraq"],
   },
   {
     name: "Rushil",
-    teams: [],
+    teams: ["France", "Belgium", "Ecuador", "Czechia", "Panama", "DR Congo"],
   },
   {
     name: "Janey",
-    teams: [],
+    teams: ["Portugal", "England", "Australia", "Algeria", "Tunisia", "Qatar"],
   },
   {
     name: "Courtney",
-    teams: [],
+    teams: ["Spain", "Mexico", "Japan", "Austria", "Scotland", "Haiti"],
   },
   {
     name: "Lindsay",
-    teams: [],
+    teams: [
+      "Colombia",
+      "Switzerland",
+      "Ghana",
+      "Paraguay",
+      "Cabo Verde",
+      "Saudi Arabia",
+    ],
   },
   {
     name: "Jagat & Kiran",
-    teams: [],
+    teams: [
+      "Germany",
+      "Uruguay",
+      "Egypt",
+      "Ivory Coast",
+      "Bosnia & Herzegovina",
+      "Jordan",
+    ],
   },
   {
     name: "Ryan",
-    teams: [],
+    teams: ["Canada", "South Africa", "Brazil", "Korea", "Uzbekistan", "Sweden"],
   },
   {
     name: "Mimi",
-    teams: [],
+    teams: ["USA", "Netherlands", "Croatia", "Iran", "New Zealand", "Curaçao"],
   },
 ];
 

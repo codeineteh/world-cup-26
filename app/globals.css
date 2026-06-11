@@ -8,5 +8,42 @@
 
 body {
   margin: 0;
-  background: #09090b;
+  background: #052e16;
+  background-attachment: fixed;
+}
+
+.pitch-page {
+  background:
+    linear-gradient(rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.11)) 50% 82px / min(220px, 52vw) 46px no-repeat,
+    linear-gradient(rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.09)) 50% calc(100% - 82px) / min(220px, 52vw) 46px no-repeat,
+    linear-gradient(90deg, rgba(255, 255, 255, 0.13) 0 2px, transparent 2px calc(100% - 2px), rgba(255, 255, 255, 0.13) calc(100% - 2px)) 16px 20px / calc(100% - 32px) calc(100% - 40px) no-repeat,
+    linear-gradient(0deg, rgba(255, 255, 255, 0.13) 0 2px, transparent 2px calc(100% - 2px), rgba(255, 255, 255, 0.13) calc(100% - 2px)) 16px 20px / calc(100% - 32px) calc(100% - 40px) no-repeat,
+    radial-gradient(circle at center, transparent 0 82px, rgba(255, 255, 255, 0.1) 83px 85px, transparent 86px),
+    linear-gradient(0deg, transparent calc(50% - 1px), rgba(255, 255, 255, 0.09) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px)),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.025) 0 72px, rgba(0, 0, 0, 0.04) 72px 144px),
+    linear-gradient(135deg, #063b25 0%, #0b4a32 34%, #33551f 62%, #07351f 100%);
+  background-attachment: fixed;
+}
+
+.pitch-page::before,
+.pitch-page::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  z-index: 0;
+  height: 28px;
+  width: min(150px, 40vw);
+  transform: translateX(-50%);
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  pointer-events: none;
+}
+
+.pitch-page::before {
+  top: 20px;
+  border-top: 0;
+}
+
+.pitch-page::after {
+  bottom: 20px;
+  border-bottom: 0;
 }

@@ -1,11 +1,27 @@
-import { draftSettings, participants } from "../data/draft";
+import { participants } from "../data/draft";
 import { worldCupGroups } from "../data/groups";
 import { manualMatches, groupBonuses } from "../data/manualResults";
+import { flagForTeam } from "../data/teamFlags";
+import { fetchWorldCupMatches } from "../data/worldCupApi";
+import TodaysScoreboard from "./components/TodaysScoreboard";
 import {
   calculateParticipantStandings,
   calculateWorldCupGroupStandings,
   getRecentCompletedMatches,
 } from "../data/scoring";
+
+export const dynamic = "force-dynamic";
+
+function mergeCompletedMatches(manualMatches, apiMatches) {
+  const completedApiMatches = apiMatches.filter((match) => match.status === "completed");
+  const matchesById = new Map(completedApiMatches.map((match) => [match.id, match]));
+
+  manualMatches.forEach((match) => {
+    matchesById.set(match.id, match);
+  });
+
+  return Array.from(matchesById.values()).sort((matchA, matchB) => matchA.id - matchB.id);
+}
 
 function formatMatchScore(match) {
   const homePenalty = match.hasPenaltyShootout ? ` (${match.homePenaltyScore})` : "";
@@ -34,79 +50,83 @@ function formatGoalDifference(goalDifference) {
   return goalDifference;
 }
 
-export default function Home() {
-  const standings = calculateParticipantStandings(participants, manualMatches, groupBonuses);
-  const groupStandings = calculateWorldCupGroupStandings(worldCupGroups, manualMatches);
-  const recentMatches = getRecentCompletedMatches(manualMatches);
+export default async function Home() {
+  let apiMatches = [];
+  let liveResultsError = "";
+
+  try {
+    apiMatches = await fetchWorldCupMatches();
+  } catch (error) {
+    liveResultsError = error.message || "Unable to load live results";
+  }
+
+  const resultsMatches = mergeCompletedMatches(manualMatches, apiMatches);
+  const standings = calculateParticipantStandings(participants, resultsMatches, groupBonuses);
+  const groupStandings = calculateWorldCupGroupStandings(worldCupGroups, resultsMatches);
+  const recentMatches = getRecentCompletedMatches(resultsMatches);
 
   const scoringRules = [
-    "Group win: 3",
-    "Group draw: 1",
-    "Advance: +3",
-    "Win group: +2",
-    "Finish second: +1",
-    "Round of 32: +5",
-    "Round of 16: +7",
-    "Quarterfinal: +10",
-    "Semifinal: +13",
-    "Final: +18",
+    "Group stage win: +3",
+    "Group stage draw: +1",
+    "Win group: +3",
+    "Finish second in group: +2",
+    "Advance from third place: +1",
+    "Round of 32 win: +5",
+    "Round of 16 win: +7",
+    "Quarterfinal win: +10",
+    "Semifinal win: +13",
+    "Final win: +18",
     "Third-place win: +6",
     "Extra-time loss: +1",
-    "PK loss: +2",
+    "Penalty shootout loss: +2",
   ];
 
   return (
-    <main className="min-h-screen bg-zinc-950 px-4 py-6 text-white sm:px-6">
-      <div className="mx-auto max-w-4xl">
-        <header className="mb-6">
-          <div className="mb-3 inline-flex rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-sm font-medium text-emerald-300">
-            Manual results mode
-          </div>
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">World Cup Draft</h1>
+    <main className="pitch-page relative min-h-screen overflow-hidden px-3 py-5 text-white sm:px-6 sm:py-6">
+      <div className="relative z-10 mx-auto max-w-5xl">
+        <header className="mb-5 border-b border-white/10 pb-5 sm:mb-6">
+          <div className="mb-4 h-1.5 w-40 rounded-full bg-[linear-gradient(90deg,#16a34a,#facc15,#ef4444,#2563eb)]" />
+          <h1 className="text-3xl font-bold leading-tight tracking-tight sm:text-5xl">
+            Sheth + Rawitscher World Cup 26'
+          </h1>
         </header>
 
-        <section className="mb-8" aria-labelledby="groups-heading">
-          <h2 id="groups-heading" className="text-xl font-semibold">
-            World Cup Groups
-          </h2>
-          <div className="mt-4 grid gap-4 lg:grid-cols-2">
-            {groupStandings.map((group) => (
-              <article key={group.name} className="rounded-lg border border-zinc-800 bg-zinc-900 p-4">
-                <h3 className="font-semibold text-white">{group.name}</h3>
-                <div className="mt-3 overflow-x-auto">
-                  <table className="w-full min-w-[420px] text-left text-sm">
-                    <thead className="text-xs uppercase text-zinc-500">
-                      <tr className="border-b border-zinc-800">
-                        <th className="py-2 pr-2 font-semibold">Team</th>
-                        <th className="px-2 py-2 text-center font-semibold">P</th>
-                        <th className="px-2 py-2 text-center font-semibold">W</th>
-                        <th className="px-2 py-2 text-center font-semibold">D</th>
-                        <th className="px-2 py-2 text-center font-semibold">L</th>
-                        <th className="px-2 py-2 text-center font-semibold">GD</th>
-                        <th className="py-2 pl-2 text-right font-semibold">Pts</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {group.teams.map((team) => (
-                        <tr key={team.name} className="border-b border-zinc-800/70 last:border-0">
-                          <td className="py-2 pr-2 font-medium text-white">{team.name}</td>
-                          <td className="px-2 py-2 text-center text-zinc-400">{team.played}</td>
-                          <td className="px-2 py-2 text-center text-zinc-400">{team.wins}</td>
-                          <td className="px-2 py-2 text-center text-zinc-400">{team.draws}</td>
-                          <td className="px-2 py-2 text-center text-zinc-400">{team.losses}</td>
-                          <td className="px-2 py-2 text-center text-zinc-400">
-                            {formatGoalDifference(team.goalDifference)}
-                          </td>
-                          <td className="py-2 pl-2 text-right font-semibold text-emerald-300">{team.points}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </article>
-            ))}
+        {liveResultsError && (
+          <div className="mb-6 rounded-lg border border-amber-300/30 bg-amber-500/10 p-3 text-sm text-amber-50">
+            Live results are temporarily unavailable, so standings are using manual results only.
           </div>
-        </section>
+        )}
+
+        <div className="mb-8 grid gap-4 lg:grid-cols-[1.35fr_1fr]">
+          <TodaysScoreboard />
+
+          <section className="h-full rounded-lg border border-amber-300/30 bg-amber-950/30 p-4 shadow-lg shadow-black/20" aria-labelledby="recent-heading">
+            <h2 id="recent-heading" className="text-xl font-semibold text-amber-100">
+              Recent Completed Matches
+            </h2>
+            <div className="mt-4 space-y-3">
+              {recentMatches.length > 0 ? (
+                recentMatches.map((match) => (
+                <div key={match.id} className="rounded-lg border border-zinc-800 bg-zinc-950/95 p-3">
+                  <div className="flex items-center justify-between gap-3 text-sm text-zinc-400">
+                    <span>{match.stage}</span>
+                    {matchTag(match) && (
+                      <span className="rounded-full border border-emerald-500/30 px-2 py-0.5 text-xs font-semibold text-emerald-300">
+                        {matchTag(match)}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-2 font-semibold text-white">{formatMatchScore(match)}</div>
+                </div>
+                ))
+              ) : (
+                <div className="rounded-lg border border-dashed border-amber-300/30 bg-zinc-950/80 p-4 text-sm text-zinc-400">
+                  No completed matches entered yet
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
 
         <section className="space-y-4" aria-labelledby="standings-heading">
           <h2 id="standings-heading" className="text-xl font-semibold">
@@ -116,11 +136,11 @@ export default function Home() {
           {standings.map((participant) => (
             <article
               key={participant.name}
-              className="rounded-lg border border-zinc-800 bg-zinc-900 p-4 shadow-lg shadow-black/20"
+              className="rounded-lg border border-white/10 bg-zinc-900/90 p-3 shadow-lg shadow-black/20 sm:p-4"
             >
-              <div className="flex items-start justify-between gap-3 border-b border-zinc-800 pb-4">
+              <div className="flex items-start justify-between gap-3 border-b border-zinc-800 pb-3 sm:pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-lg font-bold text-emerald-300">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-800 text-base font-bold text-emerald-300 sm:h-10 sm:w-10 sm:text-lg">
                     {participant.rank}
                   </div>
                   <div>
@@ -132,34 +152,32 @@ export default function Home() {
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-zinc-400">
-                      {participant.teams.length}/{draftSettings.teamsPerParticipant} drafted teams
-                    </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-3xl font-bold text-white">{participant.totalPoints}</div>
+                  <div className="text-2xl font-bold text-white sm:text-3xl">{participant.totalPoints}</div>
                   <div className="text-sm text-zinc-400">points</div>
                 </div>
               </div>
 
               {participant.teams.length > 0 ? (
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <div className="mt-4 grid gap-2 sm:grid-cols-2 sm:gap-3">
                   {participant.teams.map((team) => (
-                  <div key={team.name} className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
+                  <div key={team.name} className="rounded-lg border border-zinc-800 bg-zinc-950/95 p-3">
                     <div className="flex items-center justify-between gap-2">
-                      <h4 className="font-semibold text-white">{team.name}</h4>
-                      <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-sm font-semibold text-emerald-300">
+                      <h4 className="font-semibold text-white">
+                        {flagForTeam(team.name) && <span className="mr-2">{flagForTeam(team.name)}</span>}
+                        {team.name}
+                      </h4>
+                      <span className="shrink-0 rounded-full bg-emerald-500/10 px-2.5 py-1 text-sm font-semibold text-emerald-300">
                         {team.points} pts
                       </span>
                     </div>
-                    <ul className="mt-3 space-y-1.5 text-sm text-zinc-400">
-                      {team.scoringLog.length > 0 ? (
-                        team.scoringLog.map((logItem, index) => <li key={`${team.name}-${index}`}>{logItem}</li>)
-                      ) : (
-                        <li>No points yet</li>
-                      )}
-                    </ul>
+                    {team.scoringLog.length > 0 && (
+                      <ul className="mt-3 space-y-1.5 text-sm text-zinc-400">
+                        {team.scoringLog.map((logItem, index) => <li key={`${team.name}-${index}`}>{logItem}</li>)}
+                      </ul>
+                    )}
                   </div>
                   ))}
                 </div>
@@ -172,34 +190,61 @@ export default function Home() {
           ))}
         </section>
 
-        <section className="mt-8 rounded-lg border border-zinc-800 bg-zinc-900 p-4" aria-labelledby="recent-heading">
-          <h2 id="recent-heading" className="text-xl font-semibold">
-            Recent Completed Matches
+        <section className="mt-8" aria-labelledby="groups-heading">
+          <h2 id="groups-heading" className="text-xl font-semibold">
+            World Cup Groups
           </h2>
-          <div className="mt-4 space-y-3">
-            {recentMatches.length > 0 ? (
-              recentMatches.map((match) => (
-              <div key={match.id} className="rounded-lg border border-zinc-800 bg-zinc-950 p-3">
-                <div className="flex items-center justify-between gap-3 text-sm text-zinc-400">
-                  <span>{match.stage}</span>
-                  {matchTag(match) && (
-                    <span className="rounded-full border border-emerald-500/30 px-2 py-0.5 text-xs font-semibold text-emerald-300">
-                      {matchTag(match)}
-                    </span>
-                  )}
+          <div className="mt-4 grid gap-4 lg:grid-cols-2">
+            {groupStandings.map((group) => (
+              <article key={group.name} className="rounded-lg border border-zinc-800 bg-zinc-900/90 p-3 sm:p-4">
+                <h3 className="font-semibold text-white">{group.name}</h3>
+                <div className="mt-3">
+                  <table className="w-full table-fixed text-left text-sm">
+                    <colgroup>
+                      <col className="w-[43%]" />
+                      <col className="w-[8%]" />
+                      <col className="w-[8%]" />
+                      <col className="w-[8%]" />
+                      <col className="w-[8%]" />
+                      <col className="w-[11%]" />
+                      <col className="w-[14%]" />
+                    </colgroup>
+                    <thead className="text-xs uppercase text-zinc-500">
+                      <tr className="border-b border-zinc-800">
+                        <th className="py-2 pr-1 font-semibold">Team</th>
+                        <th className="px-1 py-2 text-center font-semibold">GP</th>
+                        <th className="px-1 py-2 text-center font-semibold">W</th>
+                        <th className="px-1 py-2 text-center font-semibold">D</th>
+                        <th className="px-1 py-2 text-center font-semibold">L</th>
+                        <th className="px-1 py-2 text-center font-semibold">GD</th>
+                        <th className="py-2 pl-1 text-right font-semibold">Pts</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.teams.map((team) => (
+                        <tr key={team.name} className="border-b border-zinc-800/70 last:border-0">
+                          <td className="break-words py-2 pr-1 text-xs font-medium leading-4 text-white sm:text-sm">
+                            {team.name}
+                          </td>
+                          <td className="px-1 py-2 text-center text-zinc-400">{team.played}</td>
+                          <td className="px-1 py-2 text-center text-zinc-400">{team.wins}</td>
+                          <td className="px-1 py-2 text-center text-zinc-400">{team.draws}</td>
+                          <td className="px-1 py-2 text-center text-zinc-400">{team.losses}</td>
+                          <td className="px-1 py-2 text-center text-zinc-400">
+                            {formatGoalDifference(team.goalDifference)}
+                          </td>
+                          <td className="py-2 pl-1 text-right font-semibold text-emerald-300">{team.points}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="mt-2 font-semibold text-white">{formatMatchScore(match)}</div>
-              </div>
-              ))
-            ) : (
-              <div className="rounded-lg border border-dashed border-zinc-700 bg-zinc-950 p-4 text-sm text-zinc-400">
-                No completed matches entered yet
-              </div>
-            )}
+              </article>
+            ))}
           </div>
         </section>
 
-        <section className="mt-6 rounded-lg border border-zinc-800 bg-zinc-900 p-4" aria-labelledby="rules-heading">
+        <section className="mt-6 rounded-lg border border-zinc-800 bg-zinc-900/90 p-3 sm:p-4" aria-labelledby="rules-heading">
           <h2 id="rules-heading" className="text-xl font-semibold">
             Scoring Rules
           </h2>
@@ -210,16 +255,6 @@ export default function Home() {
               </div>
             ))}
           </div>
-        </section>
-
-        <section className="mt-6 rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4" aria-labelledby="editing-heading">
-          <h2 id="editing-heading" className="text-xl font-semibold text-emerald-200">
-            Manual Editing
-          </h2>
-          <p className="mt-3 text-sm leading-6 text-emerald-50/80">
-            To update drafted teams during or after the draft, edit data/draft.js. To update scores once matches start,
-            edit data/manualResults.js.
-          </p>
         </section>
       </div>
     </main>
