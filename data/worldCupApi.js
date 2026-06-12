@@ -1,95 +1,138 @@
-export const WORLD_CUP_API_URL = "https://worldcup26.ir/get/games";
+import { worldCupGroups } from "./groups";
 
-const LIVE_STATUSES = new Set(["live", "halftime"]);
-const FINISHED_STATUSES = new Set(["finished", "fulltime", "ft"]);
+export const WORLD_CUP_API_URL =
+  "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard";
 
-function stageFromApiType(type) {
-  const stages = {
-    group: "Group Stage",
-    r32: "Round of 32",
-    r16: "Round of 16",
-    qf: "Quarterfinal",
-    sf: "Semifinal",
-    third: "Third Place",
+const TOURNAMENT_START_DATE = "20260611";
+
+const TEAM_NAME_ALIASES = {
+  "Bosnia & Herzegovina": "bosnia-herzegovina",
+  "Bosnia and Herzegovina": "bosnia-herzegovina",
+  "Czech Republic": "czechia",
+  "Côte d'Ivoire": "ivory coast",
+  "Democratic Republic of the Congo": "dr congo",
+  Korea: "south korea",
+  "South Korea": "south korea",
+  "United States": "usa",
+};
+
+function canonicalTeamName(teamName) {
+  return (TEAM_NAME_ALIASES[teamName] || teamName || "").toLowerCase();
+}
+
+function centralDateParts(date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/Chicago",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(date);
+
+  return Object.fromEntries(parts.map((part) => [part.type, part.value]));
+}
+
+function espnDateParam(date) {
+  const parts = centralDateParts(date);
+  return `${parts.year}${parts.month}${parts.day}`;
+}
+
+function localDateFromEspnDate(dateValue) {
+  const parts = centralDateParts(new Date(dateValue));
+  return `${parts.month}/${parts.day}/${parts.year} ${parts.hour}:${parts.minute}`;
+}
+
+function stageFromEspnEvent(event) {
+  const stageBySlug = {
+    "group-stage": "Group Stage",
+    "round-of-32": "Round of 32",
+    "round-of-16": "Round of 16",
+    quarterfinals: "Quarterfinal",
+    semifinals: "Semifinal",
+    "third-place": "Third Place",
     final: "Final",
   };
 
-  return stages[type] || type;
+  return stageBySlug[event.season?.slug] || event.season?.slug || "Group Stage";
 }
 
-function teamNameFromApiGame(game, side) {
-  const teamName = game[`${side}_team_name_en`];
-  const teamLabel = game[`${side}_team_label`];
+function statusFromEspnCompetition(competition) {
+  const status = competition.status?.type;
 
-  return teamName || teamLabel || "TBD";
-}
-
-function parseEventList(value) {
-  if (!value || value === "null") {
-    return [];
-  }
-
-  return value
-    .replace(/[{}]/g, "")
-    .split(",")
-    .map((event) => event.replace(/[“”"]/g, "").trim())
-    .filter(Boolean);
-}
-
-function parseCardList(value) {
-  if (!value || value === "null") {
-    return [];
-  }
-
-  if (/^\d+$/.test(value)) {
-    return Array.from({ length: Number(value) }, () => "Red card");
-  }
-
-  return parseEventList(value);
-}
-
-function firstPresentValue(game, keys) {
-  return keys.map((key) => game[key]).find((value) => value && value !== "null");
-}
-
-function statusFromApiGame(game) {
-  if (game.finished === "TRUE" || FINISHED_STATUSES.has(game.time_elapsed)) {
+  if (status?.completed || status?.state === "post") {
     return "completed";
   }
 
-  if (LIVE_STATUSES.has(game.time_elapsed)) {
+  if (status?.state === "in") {
     return "live";
   }
 
   return "scheduled";
 }
 
-export function normalizeApiGame(game) {
+function inferGroup(homeTeam, awayTeam) {
+  const homeCanonical = canonicalTeamName(homeTeam);
+  const awayCanonical = canonicalTeamName(awayTeam);
+  const group = worldCupGroups.find((candidateGroup) => {
+    const groupTeams = candidateGroup.teams.map(canonicalTeamName);
+    return groupTeams.includes(homeCanonical) && groupTeams.includes(awayCanonical);
+  });
+
+  return group?.name.replace("Group ", "") || "";
+}
+
+function teamNameFromCompetitor(competitor) {
+  return competitor.team?.displayName || competitor.team?.name || competitor.team?.shortDisplayName || "TBD";
+}
+
+function eventLabel(detail) {
+  const player = detail.athletesInvolved?.[0]?.shortName || detail.athletesInvolved?.[0]?.displayName;
+  const clock = detail.clock?.displayValue;
+
+  return [player, clock].filter(Boolean).join(" ");
+}
+
+function eventLabelsForTeam(details, teamId, predicate) {
+  return details
+    .filter((detail) => detail.team?.id === teamId && predicate(detail))
+    .map(eventLabel)
+    .filter(Boolean);
+}
+
+export function normalizeEspnEvent(event) {
+  const competition = event.competitions?.[0] || {};
+  const competitors = competition.competitors || [];
+  const home = competitors.find((competitor) => competitor.homeAway === "home") || competitors[0] || {};
+  const away = competitors.find((competitor) => competitor.homeAway === "away") || competitors[1] || {};
+  const homeTeam = teamNameFromCompetitor(home);
+  const awayTeam = teamNameFromCompetitor(away);
+  const details = competition.details || [];
+
   return {
-    id: Number(game.id),
-    stage: stageFromApiType(game.type),
-    group: game.group,
-    matchday: Number(game.matchday),
-    localDate: game.local_date,
-    homeTeam: teamNameFromApiGame(game, "home"),
-    awayTeam: teamNameFromApiGame(game, "away"),
-    homeScore: Number(game.home_score || 0),
-    awayScore: Number(game.away_score || 0),
-    status: statusFromApiGame(game),
-    timeElapsed: game.time_elapsed,
-    homeScorers: parseEventList(game.home_scorers),
-    awayScorers: parseEventList(game.away_scorers),
-    homeRedCards: parseCardList(
-      firstPresentValue(game, ["home_red_cards", "home_red_card", "home_redcards", "home_reds"])
-    ),
-    awayRedCards: parseCardList(
-      firstPresentValue(game, ["away_red_cards", "away_red_card", "away_redcards", "away_reds"])
-    ),
+    id: Number(event.id),
+    stage: stageFromEspnEvent(event),
+    group: inferGroup(homeTeam, awayTeam),
+    matchday: null,
+    localDate: localDateFromEspnDate(competition.date || event.date),
+    homeTeam,
+    awayTeam,
+    homeScore: Number(home.score || 0),
+    awayScore: Number(away.score || 0),
+    status: statusFromEspnCompetition(competition),
+    timeElapsed: competition.status?.type?.shortDetail || competition.status?.displayClock,
+    homeScorers: eventLabelsForTeam(details, home.team?.id, (detail) => detail.scoringPlay),
+    awayScorers: eventLabelsForTeam(details, away.team?.id, (detail) => detail.scoringPlay),
+    homeRedCards: eventLabelsForTeam(details, home.team?.id, (detail) => detail.redCard),
+    awayRedCards: eventLabelsForTeam(details, away.team?.id, (detail) => detail.redCard),
   };
 }
 
 export async function fetchWorldCupMatches() {
-  const response = await fetch(`${WORLD_CUP_API_URL}?t=${Date.now()}`, {
+  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  const url = `${WORLD_CUP_API_URL}?dates=${TOURNAMENT_START_DATE}-${espnDateParam(tomorrow)}&t=${Date.now()}`;
+  const response = await fetch(url, {
     cache: "no-store",
     headers: {
       "cache-control": "no-cache",
@@ -101,5 +144,5 @@ export async function fetchWorldCupMatches() {
   }
 
   const data = await response.json();
-  return (data.games || []).map(normalizeApiGame);
+  return (data.events || []).map(normalizeEspnEvent);
 }

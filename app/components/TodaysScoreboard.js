@@ -16,10 +16,15 @@ function formatCentralTime(date) {
 }
 
 function formatTodayKey(date) {
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: CENTRAL_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const dateParts = Object.fromEntries(parts.map((part) => [part.type, part.value]));
 
-  return `${month}/${day}/${date.getFullYear()}`;
+  return `${dateParts.month}/${dateParts.day}/${dateParts.year}`;
 }
 
 function kickoffTime(localDate) {
@@ -27,12 +32,12 @@ function kickoffTime(localDate) {
     return "TBD";
   }
 
-  const [datePart, timePart] = localDate.split(" ");
-  const [month, day, year] = datePart.split("/");
-  const [hour, minute] = timePart.split(":");
-  const kickoffDate = new Date(Date.UTC(year, Number(month) - 1, day, hour, minute));
+  const timePart = localDate.split(" ")[1];
+  const [hourValue, minuteValue] = timePart.split(":").map(Number);
+  const hour = hourValue % 12 || 12;
+  const period = hourValue >= 12 ? "PM" : "AM";
 
-  return formatCentralTime(kickoffDate);
+  return `${hour}:${String(minuteValue).padStart(2, "0")} ${period} CDT`;
 }
 
 function statusLabel(match) {
