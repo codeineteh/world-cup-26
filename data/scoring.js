@@ -149,7 +149,7 @@ export function calculateTeamPoints(teamName, matches, groupBonuses) {
 }
 
 export function calculateParticipantStandings(participants, matches, groupBonuses) {
-  return participants
+  const sortedParticipants = participants
     .map((participant) => {
       const teams = participant.teams
         .map((teamName) => ({
@@ -168,10 +168,14 @@ export function calculateParticipantStandings(participants, matches, groupBonuse
         hasLiveTeam,
       };
     })
-    .sort((participantA, participantB) => participantB.totalPoints - participantA.totalPoints)
-    .map((participant, index) => ({
+    .sort((participantA, participantB) => participantB.totalPoints - participantA.totalPoints);
+
+  return sortedParticipants.map((participant, index) => ({
       ...participant,
-      rank: index + 1,
+      rank:
+        index > 0 && participant.totalPoints === sortedParticipants[index - 1].totalPoints
+          ? sortedParticipants[index - 1].rank
+          : index + 1,
     }));
 }
 

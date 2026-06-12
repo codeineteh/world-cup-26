@@ -76,6 +76,7 @@ export default async function Home() {
   const standings = calculateParticipantStandings(participants, draftScoringMatches, groupBonuses);
   const groupStandings = calculateWorldCupGroupStandings(worldCupGroups, resultsMatches);
   const recentMatches = getRecentCompletedMatches(resultsMatches);
+  const hasSoleLeader = standings.filter((participant) => participant.rank === 1).length === 1;
 
   const scoringRules = [
     "Group stage win: +3",
@@ -158,7 +159,7 @@ export default async function Home() {
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="text-lg font-semibold">{participant.name}</h3>
-                      {participant.rank === 1 && participant.totalPoints > 0 && (
+                      {hasSoleLeader && participant.rank === 1 && participant.totalPoints > 0 && (
                         <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-xs font-bold text-zinc-950">
                           Leader
                         </span>
