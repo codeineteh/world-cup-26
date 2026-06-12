@@ -170,13 +170,20 @@ export function calculateParticipantStandings(participants, matches, groupBonuse
     })
     .sort((participantA, participantB) => participantB.totalPoints - participantA.totalPoints);
 
-  return sortedParticipants.map((participant, index) => ({
+  let previousPoints = null;
+  let previousRank = 0;
+
+  return sortedParticipants.map((participant, index) => {
+    const rank = participant.totalPoints === previousPoints ? previousRank : index + 1;
+
+    previousPoints = participant.totalPoints;
+    previousRank = rank;
+
+    return {
       ...participant,
-      rank:
-        index > 0 && participant.totalPoints === sortedParticipants[index - 1].totalPoints
-          ? sortedParticipants[index - 1].rank
-          : index + 1,
-    }));
+      rank,
+    };
+  });
 }
 
 export function calculateWorldCupGroupStandings(groups, matches) {
