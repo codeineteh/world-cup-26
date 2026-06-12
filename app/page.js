@@ -209,7 +209,9 @@ export default async function Home() {
                         Live: {team.liveMatch.teamScore} - {team.liveMatch.opponentScore} vs{" "}
                         {team.liveMatch.opponent}
                         {team.liveMatch.timeElapsed ? ` · ${team.liveMatch.timeElapsed}` : ""}
-                        {team.livePoints > 0 ? ` · +${team.livePoints} current pts` : " · 0 current pts"}
+                        {team.livePoints > 0
+                          ? ` · +${team.livePoints} pts if result holds`
+                          : " · 0 pts if result holds"}
                       </div>
                     )}
                     {team.scoringLog.length > 0 && (

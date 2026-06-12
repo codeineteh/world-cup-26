@@ -85,22 +85,21 @@ export function calculateTeamPoints(teamName, matches, groupBonuses) {
       if (match.stage === "Group Stage") {
         const didWin = teamScore > opponentScore;
         const didDraw = teamScore === opponentScore;
-        const logPrefix = isLiveMatch ? "Live: " : "";
-        const liveSuffix = isLiveMatch ? ` (${match.timeElapsed || "live"})` : "";
-
         if (didWin) {
           points += 3;
-          scoringLog.push(`${logPrefix}+3 group win vs ${opponent}${liveSuffix}`);
 
           if (isLiveMatch) {
             livePoints = 3;
+          } else {
+            scoringLog.push(`+3 group win vs ${opponent}`);
           }
         } else if (didDraw) {
           points += 1;
-          scoringLog.push(`${logPrefix}+1 group draw vs ${opponent}${liveSuffix}`);
 
           if (isLiveMatch) {
             livePoints = 1;
+          } else {
+            scoringLog.push(`+1 group draw vs ${opponent}`);
           }
         }
 
@@ -112,10 +111,11 @@ export function calculateTeamPoints(teamName, matches, groupBonuses) {
       if (winner && isSameTeam(winner, teamName)) {
         const winPoints = knockoutWinPoints(match.stage);
         points += winPoints;
-        scoringLog.push(`${isLiveMatch ? "Live: " : ""}+${winPoints} ${match.stage} win vs ${opponent}`);
 
         if (isLiveMatch) {
           livePoints = winPoints;
+        } else {
+          scoringLog.push(`+${winPoints} ${match.stage} win vs ${opponent}`);
         }
 
         return;
