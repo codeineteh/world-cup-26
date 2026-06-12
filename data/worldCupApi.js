@@ -89,8 +89,11 @@ export function normalizeApiGame(game) {
 }
 
 export async function fetchWorldCupMatches() {
-  const response = await fetch(WORLD_CUP_API_URL, {
+  const response = await fetch(`${WORLD_CUP_API_URL}?t=${Date.now()}`, {
     cache: "no-store",
+    headers: {
+      "cache-control": "no-cache",
+    },
   });
 
   if (!response.ok) {
