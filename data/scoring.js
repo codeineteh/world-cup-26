@@ -55,9 +55,11 @@ export function getMatchWinner(match) {
 export function calculateTeamPoints(teamName, matches, groupBonuses) {
   let points = 0;
   const scoringLog = [];
+  let liveMatch = null;
+  let livePoints = 0;
 
   matches
-    .filter((match) => match.status === "completed")
+    .filter((match) => match.status === "completed" || match.status === "live")
     .forEach((match) => {
       const isHomeTeam = isSameTeam(match.homeTeam, teamName);
       const isAwayTeam = isSameTeam(match.awayTeam, teamName);
@@ -67,19 +69,39 @@ export function calculateTeamPoints(teamName, matches, groupBonuses) {
       }
 
       const opponent = isHomeTeam ? match.awayTeam : match.homeTeam;
+      const teamScore = isHomeTeam ? match.homeScore : match.awayScore;
+      const opponentScore = isHomeTeam ? match.awayScore : match.homeScore;
+      const isLiveMatch = match.status === "live";
+
+      if (isLiveMatch) {
+        liveMatch = {
+          opponent,
+          teamScore,
+          opponentScore,
+          timeElapsed: match.timeElapsed,
+        };
+      }
 
       if (match.stage === "Group Stage") {
-        const didWin =
-          (isHomeTeam && match.homeScore > match.awayScore) ||
-          (isAwayTeam && match.awayScore > match.homeScore);
-        const didDraw = match.homeScore === match.awayScore;
+        const didWin = teamScore > opponentScore;
+        const didDraw = teamScore === opponentScore;
+        const logPrefix = isLiveMatch ? "Live: " : "";
+        const liveSuffix = isLiveMatch ? ` (${match.timeElapsed || "live"})` : "";
 
         if (didWin) {
           points += 3;
-          scoringLog.push(`+3 group win vs ${opponent}`);
+          scoringLog.push(`${logPrefix}+3 group win vs ${opponent}${liveSuffix}`);
+
+          if (isLiveMatch) {
+            livePoints = 3;
+          }
         } else if (didDraw) {
           points += 1;
-          scoringLog.push(`+1 group draw vs ${opponent}`);
+          scoringLog.push(`${logPrefix}+1 group draw vs ${opponent}${liveSuffix}`);
+
+          if (isLiveMatch) {
+            livePoints = 1;
+          }
         }
 
         return;
@@ -90,7 +112,12 @@ export function calculateTeamPoints(teamName, matches, groupBonuses) {
       if (winner && isSameTeam(winner, teamName)) {
         const winPoints = knockoutWinPoints(match.stage);
         points += winPoints;
-        scoringLog.push(`+${winPoints} ${match.stage} win vs ${opponent}`);
+        scoringLog.push(`${isLiveMatch ? "Live: " : ""}+${winPoints} ${match.stage} win vs ${opponent}`);
+
+        if (isLiveMatch) {
+          livePoints = winPoints;
+        }
+
         return;
       }
 
@@ -118,7 +145,7 @@ export function calculateTeamPoints(teamName, matches, groupBonuses) {
     scoringLog.push("+1 advanced from third place");
   }
 
-  return { points, scoringLog };
+  return { points, scoringLog, liveMatch, livePoints };
 }
 
 export function calculateParticipantStandings(participants, matches, groupBonuses) {
@@ -132,11 +159,13 @@ export function calculateParticipantStandings(participants, matches, groupBonuse
         .sort((teamA, teamB) => teamB.points - teamA.points);
 
       const totalPoints = teams.reduce((total, team) => total + team.points, 0);
+      const hasLiveTeam = teams.some((team) => team.liveMatch);
 
       return {
         ...participant,
         teams,
         totalPoints,
+        hasLiveTeam,
       };
     })
     .sort((participantA, participantB) => participantB.totalPoints - participantA.totalPoints)

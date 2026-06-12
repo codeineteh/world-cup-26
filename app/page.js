@@ -23,6 +23,17 @@ function mergeCompletedMatches(manualMatches, apiMatches) {
   return Array.from(matchesById.values()).sort((matchA, matchB) => matchA.id - matchB.id);
 }
 
+function mergeDraftScoringMatches(manualMatches, apiMatches) {
+  const scoringApiMatches = apiMatches.filter((match) => match.status === "completed" || match.status === "live");
+  const matchesById = new Map(scoringApiMatches.map((match) => [match.id, match]));
+
+  manualMatches.forEach((match) => {
+    matchesById.set(match.id, match);
+  });
+
+  return Array.from(matchesById.values()).sort((matchA, matchB) => matchA.id - matchB.id);
+}
+
 function formatMatchScore(match) {
   const homePenalty = match.hasPenaltyShootout ? ` (${match.homePenaltyScore})` : "";
   const awayPenalty = match.hasPenaltyShootout ? ` (${match.awayPenaltyScore})` : "";
@@ -61,7 +72,8 @@ export default async function Home() {
   }
 
   const resultsMatches = mergeCompletedMatches(manualMatches, apiMatches);
-  const standings = calculateParticipantStandings(participants, resultsMatches, groupBonuses);
+  const draftScoringMatches = mergeDraftScoringMatches(manualMatches, apiMatches);
+  const standings = calculateParticipantStandings(participants, draftScoringMatches, groupBonuses);
   const groupStandings = calculateWorldCupGroupStandings(worldCupGroups, resultsMatches);
   const recentMatches = getRecentCompletedMatches(resultsMatches);
 
@@ -155,7 +167,13 @@ export default async function Home() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-white sm:text-3xl">{participant.totalPoints}</div>
+                  <div
+                    className={`text-2xl font-bold sm:text-3xl ${
+                      participant.hasLiveTeam ? "text-yellow-300" : "text-white"
+                    }`}
+                  >
+                    {participant.totalPoints}
+                  </div>
                   <div className="text-sm text-zinc-400">points</div>
                 </div>
               </div>
@@ -163,16 +181,37 @@ export default async function Home() {
               {participant.teams.length > 0 ? (
                 <div className="mt-4 grid gap-2 sm:grid-cols-2 sm:gap-3">
                   {participant.teams.map((team) => (
-                  <div key={team.name} className="rounded-lg border border-zinc-800 bg-zinc-950/95 p-3">
+                  <div
+                    key={team.name}
+                    className={`rounded-lg border p-3 ${
+                      team.liveMatch
+                        ? "border-yellow-300/50 bg-yellow-300/10 shadow-sm shadow-yellow-300/10"
+                        : "border-zinc-800 bg-zinc-950/95"
+                    }`}
+                  >
                     <div className="flex items-center justify-between gap-2">
-                      <h4 className="font-semibold text-white">
+                      <h4 className={`font-semibold ${team.liveMatch ? "text-yellow-200" : "text-white"}`}>
                         {flagForTeam(team.name) && <span className="mr-2">{flagForTeam(team.name)}</span>}
                         {team.name}
                       </h4>
-                      <span className="shrink-0 rounded-full bg-emerald-500/10 px-2.5 py-1 text-sm font-semibold text-emerald-300">
+                      <span
+                        className={`shrink-0 rounded-full px-2.5 py-1 text-sm font-semibold ${
+                          team.liveMatch
+                            ? "bg-yellow-300/15 text-yellow-200"
+                            : "bg-emerald-500/10 text-emerald-300"
+                        }`}
+                      >
                         {team.points} pts
                       </span>
                     </div>
+                    {team.liveMatch && (
+                      <div className="mt-2 text-sm font-semibold text-yellow-200">
+                        Live: {team.liveMatch.teamScore} - {team.liveMatch.opponentScore} vs{" "}
+                        {team.liveMatch.opponent}
+                        {team.liveMatch.timeElapsed ? ` · ${team.liveMatch.timeElapsed}` : ""}
+                        {team.livePoints > 0 ? ` · +${team.livePoints} current pts` : " · 0 current pts"}
+                      </div>
+                    )}
                     {team.scoringLog.length > 0 && (
                       <ul className="mt-3 space-y-1.5 text-sm text-zinc-400">
                         {team.scoringLog.map((logItem, index) => <li key={`${team.name}-${index}`}>{logItem}</li>)}
