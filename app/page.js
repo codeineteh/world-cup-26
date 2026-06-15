@@ -133,7 +133,7 @@ export default async function Home() {
     <main className="pitch-page relative min-h-screen overflow-hidden px-3 py-5 text-white sm:px-6 sm:py-6">
       <div className="relative z-10 mx-auto max-w-5xl">
         <header className="mb-5 border-b border-white/10 pb-5 sm:mb-6">
-          <div className="mb-4 h-1.5 w-40 rounded-full bg-[linear-gradient(90deg,#16a34a,#facc15,#ef4444,#2563eb)]" />
+          <div className="mb-4 h-1.5 w-52 rounded-full bg-[linear-gradient(90deg,#d80621_0%,#ffffff_18%,#b31942_34%,#0a3161_52%,#006847_72%,#ffffff_86%,#ce1126_100%)] shadow-sm shadow-black/30" />
           <h1 className="world-cup-title">
             La Familia World Cup 26'
           </h1>
