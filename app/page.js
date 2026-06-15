@@ -134,8 +134,8 @@ export default async function Home() {
       <div className="relative z-10 mx-auto max-w-5xl">
         <header className="mb-5 border-b border-white/10 pb-5 sm:mb-6">
           <div className="mb-4 h-1.5 w-40 rounded-full bg-[linear-gradient(90deg,#16a34a,#facc15,#ef4444,#2563eb)]" />
-          <h1 className="text-3xl font-bold leading-tight tracking-tight sm:text-5xl">
-            Sheth + Rawitscher World Cup 26'
+          <h1 className="world-cup-title">
+            La Familia World Cup 26'
           </h1>
         </header>
 

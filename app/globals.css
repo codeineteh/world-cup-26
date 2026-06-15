@@ -12,6 +12,28 @@ body {
   background-attachment: fixed;
 }
 
+.world-cup-title {
+  display: inline-block;
+  font-family: "Cooper Black", "Arial Rounded MT Bold", "Trebuchet MS", system-ui, sans-serif;
+  font-size: 2.5rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0;
+  color: #fff7ed;
+  white-space: nowrap;
+  -webkit-text-stroke: 1px rgba(30, 64, 175, 0.9);
+  text-shadow:
+    0 3px 0 rgba(185, 28, 28, 0.9),
+    0 6px 0 rgba(30, 64, 175, 0.7),
+    0 10px 22px rgba(0, 0, 0, 0.35);
+}
+
+@media (min-width: 640px) {
+  .world-cup-title {
+    font-size: 5.25rem;
+  }
+}
+
 .pitch-page {
   background:
     linear-gradient(rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.11)) 50% 82px / min(220px, 52vw) 46px no-repeat,
