@@ -1,11 +1,11 @@
 export function knockoutWinPoints(stage) {
   const pointsByStage = {
-    "Round of 32": 5,
-    "Round of 16": 7,
-    Quarterfinal: 10,
-    Semifinal: 13,
-    Final: 18,
-    "Third Place": 6,
+    "Round of 32": 4,
+    "Round of 16": 6,
+    Quarterfinal: 8,
+    Semifinal: 10,
+    Final: 12,
+    "Third Place": 3,
   };
 
   return pointsByStage[stage] || 0;

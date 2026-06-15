@@ -1,22 +1,27 @@
 export const participants = [
   {
     name: "Tej",
+    poolTeamName: "Wave Your Flag",
     teams: ["Argentina", "Norway", "Morocco", "Türkiye", "Senegal", "Iraq"],
   },
   {
     name: "Rushil",
+    poolTeamName: "Team Rushil",
     teams: ["France", "Belgium", "Ecuador", "Czechia", "Panama", "DR Congo"],
   },
   {
     name: "Janey",
+    poolTeamName: "Day Dream",
     teams: ["Portugal", "England", "Australia", "Algeria", "Tunisia", "Qatar"],
   },
   {
-    name: "Courtney",
+    name: "Courtney + Eric",
+    poolTeamName: "Flavor Blasted Goldifsh",
     teams: ["Spain", "Mexico", "Japan", "Austria", "Scotland", "Haiti"],
   },
   {
     name: "Lindsay",
+    poolTeamName: "Waterfall",
     teams: [
       "Colombia",
       "Switzerland",
@@ -28,6 +33,7 @@ export const participants = [
   },
   {
     name: "Jagat & Kiran",
+    poolTeamName: "Da BOSSnians",
     teams: [
       "Germany",
       "Uruguay",
@@ -39,10 +45,12 @@ export const participants = [
   },
   {
     name: "Ryan",
+    poolTeamName: "Brazil and Vibes",
     teams: ["Canada", "South Africa", "Brazil", "South Korea", "Uzbekistan", "Sweden"],
   },
   {
-    name: "Mimi",
+    name: "MiMi",
+    poolTeamName: "Go Knicks",
     teams: ["United States", "Netherlands", "Croatia", "Iran", "New Zealand", "Curaçao"],
   },
 ];

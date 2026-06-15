@@ -101,6 +101,7 @@ export default async function Home() {
   const hasSoleLeader = standings.filter((participant) => participant.rank === 1).length === 1;
   const summaryStandings = standings.map((participant) => ({
     name: participant.name,
+    poolTeamName: participant.poolTeamName,
     anchorId: participantAnchorId(participant.name),
     rank: participant.rank,
     groupGamesCompleted: activeGroupGamesForParticipant(participant.name, draftScoringMatches),
@@ -108,7 +109,7 @@ export default async function Home() {
     totalPoints: participant.totalPoints,
   }));
   const shethManagers = ["Tej", "Rushil", "Jagat & Kiran", "Janey"];
-  const rawitscherManagers = ["Ryan", "Mimi", "Courtney", "Lindsay"];
+  const rawitscherManagers = ["Ryan", "MiMi", "Courtney + Eric", "Lindsay"];
   const shethScore = scoreForManagers(standings, shethManagers);
   const rawitscherScore = scoreForManagers(standings, rawitscherManagers);
 
@@ -118,12 +119,12 @@ export default async function Home() {
     "Win group: +3",
     "Finish second in group: +2",
     "Advance from third place: +1",
-    "Round of 32 win: +5",
-    "Round of 16 win: +7",
-    "Quarterfinal win: +10",
-    "Semifinal win: +13",
-    "Final win: +18",
-    "Third-place win: +6",
+    "Round of 32 win: +4",
+    "Round of 16 win: +6",
+    "Round of 8 win: +8",
+    "Round of 4 win: +10",
+    "Finals win: +12",
+    "3rd place game win: +3",
     "Extra-time loss: +1",
     "Penalty shootout loss: +2",
   ];
@@ -199,10 +200,10 @@ export default async function Home() {
         <div className="mb-6 grid gap-4 lg:grid-cols-[1.35fr_1fr]">
           <section className="rounded-lg border border-white/10 bg-zinc-900/90 p-3 shadow-lg shadow-black/20 sm:p-4" aria-labelledby="summary-heading">
             <h2 id="summary-heading" className="text-xl font-semibold">
-              Pool Standings
+              Leaderboard
             </h2>
             <p className="mt-1 text-xs font-medium text-zinc-500">
-              Click name for detailed breakdown
+              Click team name for detailed breakdown
             </p>
             <div className="mt-4 overflow-hidden rounded-lg border border-zinc-800">
               <table className="w-full table-fixed text-left text-sm">
@@ -215,7 +216,7 @@ export default async function Home() {
                 <thead className="bg-zinc-950/80 text-xs uppercase text-zinc-500">
                   <tr className="border-b border-zinc-800">
                     <th className="px-3 py-2 font-semibold">Pos</th>
-                    <th className="px-3 py-2 font-semibold">Manager</th>
+                    <th className="px-3 py-2 font-semibold">Team</th>
                     <th className="px-3 py-2 text-center font-semibold">Group</th>
                     <th className="px-3 py-2 text-right font-semibold">Pts</th>
                   </tr>
@@ -225,8 +226,8 @@ export default async function Home() {
                     <tr key={participant.name} className="border-b border-zinc-800/70 last:border-0">
                       <td className="px-3 py-2 font-semibold text-emerald-300">{participant.rank}</td>
                       <td className="px-3 py-2 font-medium text-white">
-                        <a className="underline decoration-emerald-300/40 underline-offset-4 transition hover:text-emerald-200" href={`#${participant.anchorId}`}>
-                          {participant.name}
+                        <a className="block underline decoration-emerald-300/40 underline-offset-4 transition hover:text-emerald-200" href={`#${participant.anchorId}`}>
+                          {participant.poolTeamName}
                         </a>
                       </td>
                       <td className="px-3 py-2 text-center tabular-nums text-zinc-400">
