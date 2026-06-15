@@ -5,7 +5,7 @@ export const worldCupGroups = [
   },
   {
     name: "Group B",
-    teams: ["Canada", "Switzerland", "Qatar", "Bosnia and Herzegovina"],
+    teams: ["Canada", "Switzerland", "Qatar", "Bosnia-Herzegovina"],
   },
   {
     name: "Group C",
@@ -13,11 +13,11 @@ export const worldCupGroups = [
   },
   {
     name: "Group D",
-    teams: ["USA", "Paraguay", "Turkey", "Australia"],
+    teams: ["United States", "Paraguay", "Türkiye", "Australia"],
   },
   {
     name: "Group E",
-    teams: ["Germany", "Côte d'Ivoire", "Ecuador", "Curaçao"],
+    teams: ["Germany", "Ivory Coast", "Ecuador", "Curaçao"],
   },
   {
     name: "Group F",

@@ -13,12 +13,16 @@ export function knockoutWinPoints(stage) {
 
 const TEAM_NAME_ALIASES = {
   "Bosnia & Herzegovina": "bosnia and herzegovina",
+  "Bosnia and Herzegovina": "bosnia and herzegovina",
+  "Bosnia-Herzegovina": "bosnia and herzegovina",
   "Cape Verde": "cabo verde",
   "Czech Republic": "czechia",
   "Côte d'Ivoire": "ivory coast",
   "Democratic Republic of the Congo": "dr congo",
   Korea: "south korea",
   "South Korea": "south korea",
+  Turkey: "turkey",
+  Türkiye: "turkey",
   "United States": "usa",
 };
 
@@ -101,6 +105,8 @@ export function calculateTeamPoints(teamName, matches, groupBonuses) {
           } else {
             scoringLog.push(`+1 group draw vs ${opponent}`);
           }
+        } else if (!isLiveMatch) {
+          scoringLog.push(`+0 group loss vs ${opponent}`);
         }
 
         return;
@@ -128,6 +134,8 @@ export function calculateTeamPoints(teamName, matches, groupBonuses) {
         } else if (match.hasExtraTime) {
           points += 1;
           scoringLog.push(`+1 lost in extra time vs ${opponent}`);
+        } else {
+          scoringLog.push(`+0 ${match.stage} loss vs ${opponent}`);
         }
       }
     });

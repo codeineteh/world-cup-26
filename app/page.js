@@ -1,4 +1,4 @@
-import { participants } from "../data/draft";
+import { managerForTeam, participants } from "../data/draft";
 import { worldCupGroups } from "../data/groups";
 import { manualMatches, groupBonuses } from "../data/manualResults";
 import { flagForTeam } from "../data/teamFlags";
@@ -34,11 +34,32 @@ function mergeDraftScoringMatches(manualMatches, apiMatches) {
   return Array.from(matchesById.values()).sort((matchA, matchB) => matchA.id - matchB.id);
 }
 
-function formatMatchScore(match) {
-  const homePenalty = match.hasPenaltyShootout ? ` (${match.homePenaltyScore})` : "";
-  const awayPenalty = match.hasPenaltyShootout ? ` (${match.awayPenaltyScore})` : "";
+function activeGroupGamesForParticipant(participantName, matches) {
+  return matches
+    .filter((match) => (match.status === "completed" || match.status === "live") && match.stage === "Group Stage")
+    .reduce((total, match) => {
+      const homeGame = managerForTeam(match.homeTeam) === participantName ? 1 : 0;
+      const awayGame = managerForTeam(match.awayTeam) === participantName ? 1 : 0;
 
-  return `${match.homeTeam} ${match.homeScore}${homePenalty} - ${match.awayScore}${awayPenalty} ${match.awayTeam}`;
+      return total + homeGame + awayGame;
+    }, 0);
+}
+
+function participantAnchorId(participantName) {
+  return `manager-${participantName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`;
+}
+
+function scoreForManagers(standings, managerNames) {
+  return standings
+    .filter((participant) => managerNames.includes(participant.name))
+    .reduce((total, participant) => total + participant.totalPoints, 0);
+}
+
+function scoreDisplay(match, side) {
+  const score = side === "home" ? match.homeScore : match.awayScore;
+  const penaltyScore = side === "home" ? match.homePenaltyScore : match.awayPenaltyScore;
+
+  return match.hasPenaltyShootout ? `${score} (${penaltyScore})` : score;
 }
 
 function matchTag(match) {
@@ -76,7 +97,20 @@ export default async function Home() {
   const standings = calculateParticipantStandings(participants, draftScoringMatches, groupBonuses);
   const groupStandings = calculateWorldCupGroupStandings(worldCupGroups, resultsMatches);
   const recentMatches = getRecentCompletedMatches(resultsMatches);
+  const liveMatches = draftScoringMatches.filter((match) => match.status === "live");
   const hasSoleLeader = standings.filter((participant) => participant.rank === 1).length === 1;
+  const summaryStandings = standings.map((participant) => ({
+    name: participant.name,
+    anchorId: participantAnchorId(participant.name),
+    rank: participant.rank,
+    groupGamesCompleted: activeGroupGamesForParticipant(participant.name, draftScoringMatches),
+    totalGroupGames: participant.teams.length * 3,
+    totalPoints: participant.totalPoints,
+  }));
+  const shethManagers = ["Tej", "Rushil", "Jagat & Kiran", "Janey"];
+  const rawitscherManagers = ["Ryan", "Mimi", "Courtney", "Lindsay"];
+  const shethScore = scoreForManagers(standings, shethManagers);
+  const rawitscherScore = scoreForManagers(standings, rawitscherManagers);
 
   const scoringRules = [
     "Group stage win: +3",
@@ -110,6 +144,129 @@ export default async function Home() {
           </div>
         )}
 
+        {liveMatches.length > 0 && (
+          <section className="mb-4 rounded-lg border border-yellow-300/40 bg-yellow-300/10 p-3 shadow-lg shadow-black/20 sm:p-4" aria-labelledby="live-heading">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 id="live-heading" className="text-base font-semibold text-yellow-100 sm:text-lg">
+                Live Now
+              </h2>
+              <span className="rounded-full bg-red-500 px-2 py-0.5 text-xs font-bold uppercase text-white">
+                Live
+              </span>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {liveMatches.map((match) => (
+                <article key={match.id} className="rounded-lg border border-yellow-300/20 bg-zinc-950/90 p-3">
+                  <div className="flex items-center justify-between gap-3 text-xs font-semibold uppercase text-zinc-500">
+                    <span>
+                      {match.stage}
+                      {match.group ? ` · Group ${match.group}` : ""}
+                    </span>
+                    <span className="text-yellow-200">{match.timeElapsed || "Live"}</span>
+                  </div>
+                  <div className="mt-2 grid gap-1.5">
+                    <div className="grid grid-cols-[1fr_auto] items-start gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate font-semibold text-white">
+                          {flagForTeam(match.homeTeam) && <span className="mr-2">{flagForTeam(match.homeTeam)}</span>}
+                          {match.homeTeam}
+                        </div>
+                        {managerForTeam(match.homeTeam) && (
+                          <div className="mt-0.5 truncate text-xs font-medium text-zinc-500">{managerForTeam(match.homeTeam)}</div>
+                        )}
+                      </div>
+                      <div className="text-2xl font-bold tabular-nums text-yellow-100">{scoreDisplay(match, "home")}</div>
+                    </div>
+                    <div className="grid grid-cols-[1fr_auto] items-start gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate font-semibold text-white">
+                          {flagForTeam(match.awayTeam) && <span className="mr-2">{flagForTeam(match.awayTeam)}</span>}
+                          {match.awayTeam}
+                        </div>
+                        {managerForTeam(match.awayTeam) && (
+                          <div className="mt-0.5 truncate text-xs font-medium text-zinc-500">{managerForTeam(match.awayTeam)}</div>
+                        )}
+                      </div>
+                      <div className="text-2xl font-bold tabular-nums text-yellow-100">{scoreDisplay(match, "away")}</div>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        <div className="mb-6 grid gap-4 lg:grid-cols-[1.35fr_1fr]">
+          <section className="rounded-lg border border-white/10 bg-zinc-900/90 p-3 shadow-lg shadow-black/20 sm:p-4" aria-labelledby="summary-heading">
+            <h2 id="summary-heading" className="text-xl font-semibold">
+              Pool Standings
+            </h2>
+            <p className="mt-1 text-xs font-medium text-zinc-500">
+              Click name for detailed breakdown
+            </p>
+            <div className="mt-4 overflow-hidden rounded-lg border border-zinc-800">
+              <table className="w-full table-fixed text-left text-sm">
+                <colgroup>
+                  <col className="w-[14%]" />
+                  <col className="w-[38%]" />
+                  <col className="w-[28%]" />
+                  <col className="w-[20%]" />
+                </colgroup>
+                <thead className="bg-zinc-950/80 text-xs uppercase text-zinc-500">
+                  <tr className="border-b border-zinc-800">
+                    <th className="px-3 py-2 font-semibold">Pos</th>
+                    <th className="px-3 py-2 font-semibold">Manager</th>
+                    <th className="px-3 py-2 text-center font-semibold">Group</th>
+                    <th className="px-3 py-2 text-right font-semibold">Pts</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {summaryStandings.map((participant) => (
+                    <tr key={participant.name} className="border-b border-zinc-800/70 last:border-0">
+                      <td className="px-3 py-2 font-semibold text-emerald-300">{participant.rank}</td>
+                      <td className="px-3 py-2 font-medium text-white">
+                        <a className="underline decoration-emerald-300/40 underline-offset-4 transition hover:text-emerald-200" href={`#${participant.anchorId}`}>
+                          {participant.name}
+                        </a>
+                      </td>
+                      <td className="px-3 py-2 text-center tabular-nums text-zinc-400">
+                        {participant.groupGamesCompleted}/{participant.totalGroupGames}
+                      </td>
+                      <td className="px-3 py-2 text-right font-semibold text-white">{participant.totalPoints}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-cyan-300/30 bg-cyan-950/30 p-4 shadow-lg shadow-black/20" aria-labelledby="family-score-heading">
+            <h2 id="family-score-heading" className="text-xl font-semibold text-cyan-100">
+              Sheth vs Rawitscher
+            </h2>
+            <div className="mt-4 grid gap-3">
+              <div className="rounded-lg border border-zinc-800 bg-zinc-950/95 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold text-white">Sheth</h3>
+                    <div className="mt-1 text-xs leading-5 text-zinc-500">{shethManagers.join(", ")}</div>
+                  </div>
+                  <div className="text-3xl font-bold tabular-nums text-emerald-300">{shethScore}</div>
+                </div>
+              </div>
+              <div className="rounded-lg border border-zinc-800 bg-zinc-950/95 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold text-white">Rawitscher</h3>
+                    <div className="mt-1 text-xs leading-5 text-zinc-500">{rawitscherManagers.join(", ")}</div>
+                  </div>
+                  <div className="text-3xl font-bold tabular-nums text-emerald-300">{rawitscherScore}</div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
         <div className="mb-8 grid gap-4 lg:grid-cols-[1.35fr_1fr]">
           <TodaysScoreboard />
 
@@ -129,7 +286,24 @@ export default async function Home() {
                       </span>
                     )}
                   </div>
-                  <div className="mt-2 font-semibold text-white">{formatMatchScore(match)}</div>
+                  <div className="mt-2 grid grid-cols-[1fr_auto] gap-3">
+                    <div>
+                      <div className="font-semibold text-white">{match.homeTeam}</div>
+                      {managerForTeam(match.homeTeam) && (
+                        <div className="mt-0.5 text-xs font-medium text-zinc-500">{managerForTeam(match.homeTeam)}</div>
+                      )}
+                    </div>
+                    <div className="text-2xl font-bold tabular-nums text-white">{scoreDisplay(match, "home")}</div>
+                  </div>
+                  <div className="mt-2 grid grid-cols-[1fr_auto] gap-3">
+                    <div>
+                      <div className="font-semibold text-white">{match.awayTeam}</div>
+                      {managerForTeam(match.awayTeam) && (
+                        <div className="mt-0.5 text-xs font-medium text-zinc-500">{managerForTeam(match.awayTeam)}</div>
+                      )}
+                    </div>
+                    <div className="text-2xl font-bold tabular-nums text-white">{scoreDisplay(match, "away")}</div>
+                  </div>
                 </div>
                 ))
               ) : (
@@ -148,8 +322,9 @@ export default async function Home() {
 
           {standings.map((participant) => (
             <article
+              id={participantAnchorId(participant.name)}
               key={participant.name}
-              className="rounded-lg border border-white/10 bg-zinc-900/90 p-3 shadow-lg shadow-black/20 sm:p-4"
+              className="scroll-mt-4 rounded-lg border border-white/10 bg-zinc-900/90 p-3 shadow-lg shadow-black/20 sm:scroll-mt-6 sm:p-4"
             >
               <div className="flex items-start justify-between gap-3 border-b border-zinc-800 pb-3 sm:pb-4">
                 <div className="flex items-center gap-3">

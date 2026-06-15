@@ -8,11 +8,14 @@ const TOURNAMENT_START_DATE = "20260611";
 const TEAM_NAME_ALIASES = {
   "Bosnia & Herzegovina": "bosnia-herzegovina",
   "Bosnia and Herzegovina": "bosnia-herzegovina",
+  "Bosnia-Herzegovina": "bosnia-herzegovina",
   "Czech Republic": "czechia",
   "Côte d'Ivoire": "ivory coast",
   "Democratic Republic of the Congo": "dr congo",
   Korea: "south korea",
   "South Korea": "south korea",
+  Turkey: "turkey",
+  Türkiye: "turkey",
   "United States": "usa",
 };
 

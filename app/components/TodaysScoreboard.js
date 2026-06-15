@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { managerForTeam } from "../../data/draft";
 
 const POLL_INTERVAL_MS = 15000;
 const CENTRAL_TIME_ZONE = "America/Chicago";
@@ -58,6 +59,16 @@ function MatchScorers({ scorers }) {
   }
 
   return <div className="mt-1 text-xs leading-5 text-zinc-500">{scorers.join(", ")}</div>;
+}
+
+function TeamManager({ teamName }) {
+  const manager = managerForTeam(teamName);
+
+  if (!manager) {
+    return null;
+  }
+
+  return <div className="mt-0.5 text-xs font-medium text-zinc-500">{manager}</div>;
 }
 
 function RedCards({ cards }) {
@@ -175,6 +186,7 @@ export default function TodaysScoreboard() {
                 <div className="grid grid-cols-[1fr_auto] items-start gap-3">
                   <div>
                     <div className="font-semibold text-white">{match.homeTeam}</div>
+                    <TeamManager teamName={match.homeTeam} />
                     <MatchScorers scorers={match.homeScorers} />
                     <RedCards cards={match.homeRedCards} />
                   </div>
@@ -184,6 +196,7 @@ export default function TodaysScoreboard() {
                 <div className="grid grid-cols-[1fr_auto] items-start gap-3">
                   <div>
                     <div className="font-semibold text-white">{match.awayTeam}</div>
+                    <TeamManager teamName={match.awayTeam} />
                     <MatchScorers scorers={match.awayScorers} />
                     <RedCards cards={match.awayRedCards} />
                   </div>
