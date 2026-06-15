@@ -6,7 +6,7 @@ export const participants = [
   },
   {
     name: "Rushil",
-    poolTeamName: "Team Rushil",
+    poolTeamName: "French Fries",
     teams: ["France", "Belgium", "Ecuador", "Czechia", "Panama", "DR Congo"],
   },
   {
