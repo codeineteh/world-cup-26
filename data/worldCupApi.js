@@ -20,8 +20,17 @@ const TEAM_NAME_ALIASES = {
   "United States": "usa",
 };
 
+const TEAM_NAME_DISPLAY = {
+  "Congo DR": "DR Congo",
+  "Democratic Republic of the Congo": "DR Congo",
+};
+
 function canonicalTeamName(teamName) {
   return (TEAM_NAME_ALIASES[teamName] || teamName || "").toLowerCase();
+}
+
+function displayTeamName(teamName) {
+  return TEAM_NAME_DISPLAY[teamName] || teamName;
 }
 
 function centralDateParts(date) {
@@ -110,8 +119,8 @@ export function normalizeEspnEvent(event) {
   const competitors = competition.competitors || [];
   const home = competitors.find((competitor) => competitor.homeAway === "home") || competitors[0] || {};
   const away = competitors.find((competitor) => competitor.homeAway === "away") || competitors[1] || {};
-  const homeTeam = teamNameFromCompetitor(home);
-  const awayTeam = teamNameFromCompetitor(away);
+  const homeTeam = displayTeamName(teamNameFromCompetitor(home));
+  const awayTeam = displayTeamName(teamNameFromCompetitor(away));
   const details = competition.details || [];
 
   return {
