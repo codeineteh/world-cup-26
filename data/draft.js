@@ -67,6 +67,7 @@ const TEAM_NAME_ALIASES = {
   "Czech Republic": "czechia",
   "Côte d'Ivoire": "ivory coast",
   "Democratic Republic of the Congo": "dr congo",
+  "Congo DR": "dr congo",
   Korea: "south korea",
   "South Korea": "south korea",
   Turkey: "turkey",
