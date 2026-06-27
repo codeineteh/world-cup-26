@@ -94,67 +94,18 @@ export default async function Home() {
 
   const resultsMatches = mergeCompletedMatches(manualMatches, apiMatches);
   const draftScoringMatches = mergeDraftScoringMatches(manualMatches, apiMatches);
-
-  // Derive group standings from completed results
+  const standings = calculateParticipantStandings(participants, draftScoringMatches, groupBonuses);
   const groupStandings = calculateWorldCupGroupStandings(worldCupGroups, resultsMatches);
-
-  // Compute automatic group finish bonuses for fully-played groups (prefer manual overrides)
-  const computedGroupBonuses = {};
-  groupStandings.forEach((group) => {
-    const allPlayed = group.teams.every((t) => t.played === 3);
-    if (!allPlayed) return;
-
-    // teams are already sorted by points/goals in calculateWorldCupGroupStandings
-    const first = group.teams[0];
-    const second = group.teams[1];
-    const third = group.teams[2];
-
-    if (first) computedGroupBonuses[first.name] = { groupFinish: 1 };
-    if (second) computedGroupBonuses[second.name] = { groupFinish: 2 };
-
-    // Do not auto-assign third-place advancement here; keep that for manualOverrides
-  });
-
-  // Merge manual group bonuses (manual should override computed)
-  const mergedGroupBonuses = {
-    ...computedGroupBonuses,
-    ...(groupBonuses || {}),
-  };
-
-  // Now compute participant standings using merged bonuses
-  const standings = calculateParticipantStandings(participants, draftScoringMatches, mergedGroupBonuses);
   const recentMatches = getRecentCompletedMatches(resultsMatches);
   const liveMatches = draftScoringMatches.filter((match) => match.status === "live");
   const hasSoleLeader = standings.filter((participant) => participant.rank === 1).length === 1;
-
-  function isTeamStillInTournament(teamName) {
-    const group = groupStandings.find((g) => g.teams.some((t) => t.name === teamName));
-    if (!group) return true;
-
-    const allPlayed = group.teams.every((t) => t.played === 3);
-    if (!allPlayed) return true;
-
-    const advanced = new Set();
-    if (group.teams[0]) advanced.add(group.teams[0].name);
-    if (group.teams[1]) advanced.add(group.teams[1].name);
-
-    // include any manually-marked third-place advancements
-    group.teams.forEach((t) => {
-      if (mergedGroupBonuses[t.name]?.advanced) {
-        advanced.add(t.name);
-      }
-    });
-
-    return advanced.has(teamName);
-  }
-
   const summaryStandings = standings.map((participant) => ({
     name: participant.name,
     poolTeamName: participant.poolTeamName,
     anchorId: participantAnchorId(participant.name),
     rank: participant.rank,
-    teamsLeft: participant.teams.filter((team) => isTeamStillInTournament(team.name)).length,
-    totalTeams: participant.teams.length,
+    groupGamesCompleted: activeGroupGamesForParticipant(participant.name, draftScoringMatches),
+    totalGroupGames: participant.teams.length * 3,
     totalPoints: participant.totalPoints,
   }));
   const shethManagers = ["Tej", "Rushil", "Jagat & Kiran", "Janey"];
@@ -266,7 +217,7 @@ export default async function Home() {
                   <tr className="border-b border-zinc-800">
                     <th className="px-3 py-2 font-semibold">Pos</th>
                     <th className="px-3 py-2 font-semibold">Team</th>
-                    <th className="px-3 py-2 text-center font-semibold">Teams left</th>
+                    <th className="px-3 py-2 text-center font-semibold">Group</th>
                     <th className="px-3 py-2 text-right font-semibold">Pts</th>
                   </tr>
                 </thead>
@@ -280,7 +231,7 @@ export default async function Home() {
                         </a>
                       </td>
                       <td className="px-3 py-2 text-center tabular-nums text-zinc-400">
-                        {participant.teamsLeft}/{participant.totalTeams}
+                        {participant.groupGamesCompleted}/{participant.totalGroupGames}
                       </td>
                       <td className="px-3 py-2 text-right font-semibold text-white">{participant.totalPoints}</td>
                     </tr>
