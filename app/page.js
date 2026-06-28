@@ -280,15 +280,16 @@ export default async function Home() {
               Click team name for detailed breakdown
             </p>
             <div className="mt-4 overflow-hidden rounded-lg border border-zinc-800">
-              <table className="w-full table-fixed text-left text-xs sm:text-sm">
+              <table className="w-full table-fixed text-left text-sm">
                 <colgroup>
                   <col className="w-[8%]" />
-                  <col className="w-[34%]" />
+                  <col className="w-[32%]" />
                   <col className="w-[12%]" />
                   <col className="w-[14%]" />
-                  <col className="w-[32%]" />
+                  <col className="w-[16%]" />
+                  <col className="w-[18%]" />
                 </colgroup>
-                <thead className="bg-zinc-950/80 text-[9px] uppercase text-zinc-500 sm:text-xs">
+                <thead className="bg-zinc-950/80 text-xs uppercase text-zinc-500">
                   <tr className="border-b border-zinc-800">
                     <th className="px-1 py-2 font-semibold sm:px-3">
                       <span className="sm:hidden">#</span>
@@ -307,12 +308,12 @@ export default async function Home() {
                     >
                       {currentRound.label}
                     </th>
+                    <th className="px-1 py-2 text-right font-semibold sm:px-3">Pts</th>
                     <th
                       className="px-1 py-2 text-right font-semibold sm:px-3"
-                      title="Current points and maximum possible tournament total"
+                      title="Maximum possible tournament total"
                     >
-                      <span className="sm:hidden">Pts (Max)</span>
-                      <span className="hidden sm:inline">Pts (Potential)</span>
+                      Max
                     </th>
                   </tr>
                 </thead>
@@ -333,11 +334,11 @@ export default async function Home() {
                       <td className="px-1 py-2 text-center tabular-nums text-zinc-400 sm:px-2">
                         {participant.roundProgress.matchesPlayed}/{participant.roundProgress.totalTeams}
                       </td>
-                      <td className="whitespace-nowrap px-1 py-2 text-right font-semibold text-white sm:px-3">
+                      <td className="px-1 py-2 text-right font-semibold text-white sm:px-3">
                         {participant.totalPoints}
-                        {participant.potentialPoints !== null && (
-                          <span className="text-zinc-500"> ({participant.potentialPoints})</span>
-                        )}
+                      </td>
+                      <td className="px-1 py-2 text-right font-semibold text-zinc-400 sm:px-3">
+                        {participant.potentialPoints ?? "-"}
                       </td>
                     </tr>
                   ))}
