@@ -37,6 +37,50 @@ function activeGroupGamesForParticipant(participantName, matches) {
     }, 0);
 }
 
+const knockoutRounds = [
+  { stage: "Round of 32", label: "R32" },
+  { stage: "Round of 16", label: "R16" },
+  { stage: "Quarterfinal", label: "QF" },
+  { stage: "Semifinal", label: "SF" },
+  { stage: "Third Place", label: "3rd" },
+  { stage: "Final", label: "Final" },
+];
+
+function currentKnockoutRound(matches) {
+  const activeRound = knockoutRounds.find(({ stage }) =>
+    matches.some((match) => match.stage === stage && match.status !== "completed")
+  );
+
+  return activeRound || knockoutRounds.at(-1);
+}
+
+function roundProgressForParticipant(participantName, matches, stage) {
+  const roundMatches = matches.filter((match) => match.stage === stage);
+  const teamsInRound = new Set();
+
+  roundMatches.forEach((match) => {
+    if (managerForTeam(match.homeTeam) === participantName) {
+      teamsInRound.add(match.homeTeam);
+    }
+
+    if (managerForTeam(match.awayTeam) === participantName) {
+      teamsInRound.add(match.awayTeam);
+    }
+  });
+
+  const matchesPlayed = roundMatches.filter(
+    (match) =>
+      (match.status === "completed" || match.status === "live") &&
+      (managerForTeam(match.homeTeam) === participantName ||
+        managerForTeam(match.awayTeam) === participantName)
+  ).length;
+
+  return {
+    matchesPlayed,
+    totalTeams: teamsInRound.size,
+  };
+}
+
 function participantAnchorId(participantName) {
   return `manager-${participantName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`;
 }
@@ -93,6 +137,7 @@ export default async function Home() {
   const automaticGroupBonuses = calculateAutomaticGroupBonuses(groupStandings);
   const groupBonuses = { ...automaticGroupBonuses, ...manualGroupBonuses };
   const groupStageComplete = isGroupStageComplete(groupStandings);
+  const currentRound = currentKnockoutRound(tournamentMatches);
   const standings = calculateParticipantStandings(participants, draftScoringMatches, groupBonuses).map(
     (participant) => ({
       ...participant,
@@ -126,6 +171,11 @@ export default async function Home() {
       groupGamesCompleted: activeGroupGamesForParticipant(participant.name, draftScoringMatches),
       totalGroupGames: participant.teams.length * 3,
       teamsRemaining: calculateTeamsRemaining(teamNames, groupBonuses, resultsMatches),
+      roundProgress: roundProgressForParticipant(
+        participant.name,
+        tournamentMatches,
+        currentRound.stage
+      ),
       totalPoints: participant.totalPoints,
       potentialPoints: groupStageComplete
         ? Math.max(participant.totalPoints, potentialPoints)
@@ -230,43 +280,60 @@ export default async function Home() {
               Click team name for detailed breakdown
             </p>
             <div className="mt-4 overflow-hidden rounded-lg border border-zinc-800">
-              <table className="w-full table-fixed text-left text-sm">
+              <table className="w-full table-fixed text-left text-xs sm:text-sm">
                 <colgroup>
-                  <col className="w-[12%]" />
-                  <col className="w-[36%]" />
-                  <col className="w-[18%]" />
+                  <col className="w-[8%]" />
                   <col className="w-[34%]" />
+                  <col className="w-[12%]" />
+                  <col className="w-[14%]" />
+                  <col className="w-[32%]" />
                 </colgroup>
-                <thead className="bg-zinc-950/80 text-xs uppercase text-zinc-500">
+                <thead className="bg-zinc-950/80 text-[9px] uppercase text-zinc-500 sm:text-xs">
                   <tr className="border-b border-zinc-800">
-                    <th className="px-3 py-2 font-semibold">Pos</th>
-                    <th className="px-3 py-2 font-semibold">Team</th>
-                    <th className="px-3 py-2 text-center font-semibold">
-                      {groupStageComplete ? "Teams" : "Group"}
+                    <th className="px-1 py-2 font-semibold sm:px-3">
+                      <span className="sm:hidden">#</span>
+                      <span className="hidden sm:inline">Pos</span>
+                    </th>
+                    <th className="px-1.5 py-2 font-semibold sm:px-3">Team</th>
+                    <th className="px-1 py-2 text-center font-semibold sm:px-3">
+                      <span className="sm:hidden">{groupStageComplete ? "Tm" : "Grp"}</span>
+                      <span className="hidden sm:inline">
+                        {groupStageComplete ? "Teams" : "Group"}
+                      </span>
                     </th>
                     <th
-                      className="px-3 py-2 text-right font-semibold"
+                      className="px-1 py-2 text-center font-semibold sm:px-2"
+                      title={`${currentRound.stage} fixtures played`}
+                    >
+                      {currentRound.label}
+                    </th>
+                    <th
+                      className="px-1 py-2 text-right font-semibold sm:px-3"
                       title="Current points and maximum possible tournament total"
                     >
-                      Pts (Potential)
+                      <span className="sm:hidden">Pts (Max)</span>
+                      <span className="hidden sm:inline">Pts (Potential)</span>
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {summaryStandings.map((participant) => (
                     <tr key={participant.name} className="border-b border-zinc-800/70 last:border-0">
-                      <td className="px-3 py-2 font-semibold text-emerald-300">{participant.rank}</td>
-                      <td className="px-3 py-2 font-medium text-white">
+                      <td className="px-1 py-2 font-semibold text-emerald-300 sm:px-3">{participant.rank}</td>
+                      <td className="px-1.5 py-2 font-medium text-white sm:px-3">
                         <a className="block underline decoration-emerald-300/40 underline-offset-4 transition hover:text-emerald-200" href={`#${participant.anchorId}`}>
                           {participant.poolTeamName}
                         </a>
                       </td>
-                      <td className="px-3 py-2 text-center tabular-nums text-zinc-400">
+                      <td className="px-1 py-2 text-center tabular-nums text-zinc-400 sm:px-3">
                         {groupStageComplete
                           ? participant.teamsRemaining
                           : `${participant.groupGamesCompleted}/${participant.totalGroupGames}`}
                       </td>
-                      <td className="whitespace-nowrap px-3 py-2 text-right font-semibold text-white">
+                      <td className="px-1 py-2 text-center tabular-nums text-zinc-400 sm:px-2">
+                        {participant.roundProgress.matchesPlayed}/{participant.roundProgress.totalTeams}
+                      </td>
+                      <td className="whitespace-nowrap px-1 py-2 text-right font-semibold text-white sm:px-3">
                         {participant.totalPoints}
                         {participant.potentialPoints !== null && (
                           <span className="text-zinc-500"> ({participant.potentialPoints})</span>
