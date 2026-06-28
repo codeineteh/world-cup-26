@@ -4,6 +4,9 @@ export const WORLD_CUP_API_URL =
   "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard";
 
 const TOURNAMENT_START_DATE = "20260611";
+const GROUP_STAGE_END_DATE = "20260627";
+const KNOCKOUT_START_DATE = "20260628";
+const TOURNAMENT_END_DATE = "20260719";
 
 const TEAM_NAME_ALIASES = {
   "Bosnia & Herzegovina": "bosnia-herzegovina",
@@ -47,11 +50,6 @@ function centralDateParts(date) {
   return Object.fromEntries(parts.map((part) => [part.type, part.value]));
 }
 
-function espnDateParam(date) {
-  const parts = centralDateParts(date);
-  return `${parts.year}${parts.month}${parts.day}`;
-}
-
 function localDateFromEspnDate(dateValue) {
   const parts = centralDateParts(new Date(dateValue));
   return `${parts.month}/${parts.day}/${parts.year} ${parts.hour}:${parts.minute}`;
@@ -65,6 +63,8 @@ function stageFromEspnEvent(event) {
     quarterfinals: "Quarterfinal",
     semifinals: "Semifinal",
     "third-place": "Third Place",
+    "third-place-match": "Third Place",
+    "3rd-place-match": "Third Place",
     final: "Final",
   };
 
@@ -143,6 +143,7 @@ export function normalizeEspnEvent(event) {
 
   return {
     id: Number(event.id),
+    startDate: competition.date || event.date,
     stage: stageFromEspnEvent(event),
     group: inferGroup(homeTeam, awayTeam),
     matchday: null,
@@ -167,19 +168,35 @@ export function normalizeEspnEvent(event) {
 }
 
 export async function fetchWorldCupMatches() {
-  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  const url = `${WORLD_CUP_API_URL}?dates=${TOURNAMENT_START_DATE}-${espnDateParam(tomorrow)}&t=${Date.now()}`;
-  const response = await fetch(url, {
-    cache: "no-store",
-    headers: {
-      "cache-control": "no-cache",
-    },
-  });
+  const timestamp = Date.now();
+  const dateRanges = [
+    `${TOURNAMENT_START_DATE}-${GROUP_STAGE_END_DATE}`,
+    `${KNOCKOUT_START_DATE}-${TOURNAMENT_END_DATE}`,
+  ];
+  const responses = await Promise.all(
+    dateRanges.map((dates) =>
+      fetch(`${WORLD_CUP_API_URL}?dates=${dates}&t=${timestamp}`, {
+        cache: "no-store",
+        headers: {
+          "cache-control": "no-cache",
+        },
+      })
+    )
+  );
 
-  if (!response.ok) {
+  if (responses.some((response) => !response.ok)) {
     throw new Error("Unable to fetch World Cup data");
   }
 
-  const data = await response.json();
-  return (data.events || []).map(normalizeEspnEvent);
+  const payloads = await Promise.all(responses.map((response) => response.json()));
+  const matchesById = new Map();
+
+  payloads.forEach((data) => {
+    (data.events || []).forEach((event) => {
+      const match = normalizeEspnEvent(event);
+      matchesById.set(match.id, match);
+    });
+  });
+
+  return Array.from(matchesById.values());
 }

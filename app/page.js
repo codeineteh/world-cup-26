@@ -7,6 +7,7 @@ import TodaysScoreboard from "./components/TodaysScoreboard";
 import {
   calculateAutomaticGroupBonuses,
   calculateParticipantStandings,
+  calculateRemainingPointPotential,
   calculateTeamsRemaining,
   calculateWorldCupGroupStandings,
   getRecentCompletedMatches,
@@ -15,20 +16,8 @@ import {
 
 export const dynamic = "force-dynamic";
 
-function mergeCompletedMatches(manualMatches, apiMatches) {
-  const completedApiMatches = apiMatches.filter((match) => match.status === "completed");
-  const matchesById = new Map(completedApiMatches.map((match) => [match.id, match]));
-
-  manualMatches.forEach((match) => {
-    matchesById.set(match.id, match);
-  });
-
-  return Array.from(matchesById.values()).sort((matchA, matchB) => matchA.id - matchB.id);
-}
-
-function mergeDraftScoringMatches(manualMatches, apiMatches) {
-  const scoringApiMatches = apiMatches.filter((match) => match.status === "completed" || match.status === "live");
-  const matchesById = new Map(scoringApiMatches.map((match) => [match.id, match]));
+function mergeTournamentMatches(manualMatches, apiMatches) {
+  const matchesById = new Map(apiMatches.map((match) => [match.id, match]));
 
   manualMatches.forEach((match) => {
     matchesById.set(match.id, match);
@@ -95,30 +84,54 @@ export default async function Home() {
     liveResultsError = error.message || "Unable to load live results";
   }
 
-  const resultsMatches = mergeCompletedMatches(manualMatches, apiMatches);
-  const draftScoringMatches = mergeDraftScoringMatches(manualMatches, apiMatches);
+  const tournamentMatches = mergeTournamentMatches(manualMatches, apiMatches);
+  const resultsMatches = tournamentMatches.filter((match) => match.status === "completed");
+  const draftScoringMatches = tournamentMatches.filter(
+    (match) => match.status === "completed" || match.status === "live"
+  );
   const groupStandings = calculateWorldCupGroupStandings(worldCupGroups, resultsMatches);
   const automaticGroupBonuses = calculateAutomaticGroupBonuses(groupStandings);
   const groupBonuses = { ...automaticGroupBonuses, ...manualGroupBonuses };
   const groupStageComplete = isGroupStageComplete(groupStandings);
-  const standings = calculateParticipantStandings(participants, draftScoringMatches, groupBonuses);
+  const standings = calculateParticipantStandings(participants, draftScoringMatches, groupBonuses).map(
+    (participant) => ({
+      ...participant,
+      teams: participant.teams.map((team) => ({
+        ...team,
+        eliminated:
+          groupStageComplete &&
+          calculateTeamsRemaining([team.name], groupBonuses, resultsMatches) === 0,
+      })),
+    })
+  );
   const recentMatches = getRecentCompletedMatches(resultsMatches);
   const liveMatches = draftScoringMatches.filter((match) => match.status === "live");
   const hasSoleLeader = standings.filter((participant) => participant.rank === 1).length === 1;
-  const summaryStandings = standings.map((participant) => ({
-    name: participant.name,
-    poolTeamName: participant.poolTeamName,
-    anchorId: participantAnchorId(participant.name),
-    rank: participant.rank,
-    groupGamesCompleted: activeGroupGamesForParticipant(participant.name, draftScoringMatches),
-    totalGroupGames: participant.teams.length * 3,
-    teamsRemaining: calculateTeamsRemaining(
-      participant.teams.map((team) => team.name),
-      groupBonuses,
-      resultsMatches
-    ),
-    totalPoints: participant.totalPoints,
-  }));
+  const summaryStandings = standings.map((participant) => {
+    const teamNames = participant.teams.map((team) => team.name);
+    const provisionalLivePoints = participant.teams.reduce(
+      (total, team) => total + team.livePoints,
+      0
+    );
+    const potentialPoints =
+      participant.totalPoints -
+      provisionalLivePoints +
+      calculateRemainingPointPotential(teamNames, tournamentMatches);
+
+    return {
+      name: participant.name,
+      poolTeamName: participant.poolTeamName,
+      anchorId: participantAnchorId(participant.name),
+      rank: participant.rank,
+      groupGamesCompleted: activeGroupGamesForParticipant(participant.name, draftScoringMatches),
+      totalGroupGames: participant.teams.length * 3,
+      teamsRemaining: calculateTeamsRemaining(teamNames, groupBonuses, resultsMatches),
+      totalPoints: participant.totalPoints,
+      potentialPoints: groupStageComplete
+        ? Math.max(participant.totalPoints, potentialPoints)
+        : null,
+    };
+  });
   const shethManagers = ["Tej", "Rushil", "Jagat & Kiran", "Janey"];
   const rawitscherManagers = ["Ryan", "MiMi", "Courtney + Eric", "Lindsay"];
   const shethScore = scoreForManagers(standings, shethManagers);
@@ -219,10 +232,10 @@ export default async function Home() {
             <div className="mt-4 overflow-hidden rounded-lg border border-zinc-800">
               <table className="w-full table-fixed text-left text-sm">
                 <colgroup>
-                  <col className="w-[14%]" />
-                  <col className="w-[38%]" />
-                  <col className="w-[28%]" />
-                  <col className="w-[20%]" />
+                  <col className="w-[12%]" />
+                  <col className="w-[36%]" />
+                  <col className="w-[18%]" />
+                  <col className="w-[34%]" />
                 </colgroup>
                 <thead className="bg-zinc-950/80 text-xs uppercase text-zinc-500">
                   <tr className="border-b border-zinc-800">
@@ -231,7 +244,12 @@ export default async function Home() {
                     <th className="px-3 py-2 text-center font-semibold">
                       {groupStageComplete ? "Teams" : "Group"}
                     </th>
-                    <th className="px-3 py-2 text-right font-semibold">Pts</th>
+                    <th
+                      className="px-3 py-2 text-right font-semibold"
+                      title="Current points and maximum possible tournament total"
+                    >
+                      Pts (Potential)
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -248,7 +266,12 @@ export default async function Home() {
                           ? participant.teamsRemaining
                           : `${participant.groupGamesCompleted}/${participant.totalGroupGames}`}
                       </td>
-                      <td className="px-3 py-2 text-right font-semibold text-white">{participant.totalPoints}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-right font-semibold text-white">
+                        {participant.totalPoints}
+                        {participant.potentialPoints !== null && (
+                          <span className="text-zinc-500"> ({participant.potentialPoints})</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -378,6 +401,8 @@ export default async function Home() {
                     className={`rounded-lg border p-3 ${
                       team.liveMatch
                         ? "border-yellow-300/50 bg-yellow-300/10 shadow-sm shadow-yellow-300/10"
+                        : team.eliminated
+                          ? "border-red-500/60 bg-red-950/30"
                         : "border-zinc-800 bg-zinc-950/95"
                     }`}
                   >
@@ -390,6 +415,8 @@ export default async function Home() {
                         className={`shrink-0 rounded-full px-2.5 py-1 text-sm font-semibold ${
                           team.liveMatch
                             ? "bg-yellow-300/15 text-yellow-200"
+                            : team.eliminated
+                              ? "bg-red-500/15 text-red-300"
                             : "bg-emerald-500/10 text-emerald-300"
                         }`}
                       >

@@ -34,7 +34,7 @@ const TEAM_NAME_ALIASES = {
 };
 
 function canonicalTeamName(teamName) {
-  return TEAM_NAME_ALIASES[teamName] || teamName.toLowerCase();
+  return TEAM_NAME_ALIASES[teamName] || String(teamName || "").toLowerCase();
 }
 
 function isSameTeam(teamA, teamB) {
@@ -346,6 +346,172 @@ export function calculateTeamsRemaining(teamNames, groupBonuses, matches) {
       advancingTeams.some((advancingTeam) => isSameTeam(advancingTeam, teamName)) &&
       !eliminatedTeams.some((eliminatedTeam) => isSameTeam(eliminatedTeam, teamName))
   ).length;
+}
+
+function matchStartTime(match) {
+  const startTime = Date.parse(match.startDate || "");
+  return Number.isNaN(startTime) ? Number(match.id) : startTime;
+}
+
+function setMaximum(map, key, points) {
+  if (!map.has(key) || points > map.get(key)) {
+    map.set(key, points);
+  }
+}
+
+export function calculateRemainingPointPotential(teamNames, matches) {
+  const ownsTeam = (teamName) => teamNames.some((ownedTeam) => isSameTeam(ownedTeam, teamName));
+  const bracketMatches = matches.filter((match) => match.stage !== "Group Stage");
+  const matchesByStage = new Map();
+
+  bracketMatches.forEach((match) => {
+    const stageMatches = matchesByStage.get(match.stage) || [];
+    stageMatches.push(match);
+    matchesByStage.set(match.stage, stageMatches);
+  });
+
+  matchesByStage.forEach((stageMatches) => {
+    stageMatches.sort((matchA, matchB) => matchStartTime(matchA) - matchStartTime(matchB));
+  });
+
+  const winnerStateCache = new Map();
+
+  function referencedMatch(teamSlot) {
+    const source = String(teamSlot || "").match(
+      /^(Round of 32|Round of 16|Quarterfinal|Semifinal) (\d+) Winner$/
+    );
+
+    if (!source) {
+      return null;
+    }
+
+    return matchesByStage.get(source[1])?.[Number(source[2]) - 1] || null;
+  }
+
+  function entrantStates(teamSlot) {
+    const sourceMatch = referencedMatch(teamSlot);
+
+    if (sourceMatch) {
+      return winnerStates(sourceMatch);
+    }
+
+    return new Map([[teamSlot, 0]]);
+  }
+
+  function futureWinPoints(winner, stage) {
+    return ownsTeam(winner) ? knockoutWinPoints(stage) : 0;
+  }
+
+  function winnerStates(match) {
+    if (winnerStateCache.has(match.id)) {
+      return winnerStateCache.get(match.id);
+    }
+
+    if (match.status === "completed") {
+      const winner = getMatchWinner(match);
+      const completedState = winner ? new Map([[winner, 0]]) : new Map();
+      winnerStateCache.set(match.id, completedState);
+      return completedState;
+    }
+
+    const homeStates = entrantStates(match.homeTeam);
+    const awayStates = entrantStates(match.awayTeam);
+    const outcomes = new Map();
+
+    homeStates.forEach((homePoints, homeTeam) => {
+      awayStates.forEach((awayPoints, awayTeam) => {
+        const priorPoints = homePoints + awayPoints;
+        setMaximum(
+          outcomes,
+          homeTeam,
+          priorPoints + futureWinPoints(homeTeam, match.stage)
+        );
+        setMaximum(
+          outcomes,
+          awayTeam,
+          priorPoints + futureWinPoints(awayTeam, match.stage)
+        );
+      });
+    });
+
+    winnerStateCache.set(match.id, outcomes);
+    return outcomes;
+  }
+
+  function semifinalOutcomes(match) {
+    if (match.status === "completed") {
+      const winner = getMatchWinner(match);
+
+      if (!winner) {
+        return [];
+      }
+
+      const loser = isSameTeam(winner, match.homeTeam) ? match.awayTeam : match.homeTeam;
+      return [{ winner, loser, points: 0 }];
+    }
+
+    const outcomes = new Map();
+    const homeStates = entrantStates(match.homeTeam);
+    const awayStates = entrantStates(match.awayTeam);
+
+    homeStates.forEach((homePoints, homeTeam) => {
+      awayStates.forEach((awayPoints, awayTeam) => {
+        const priorPoints = homePoints + awayPoints;
+        setMaximum(
+          outcomes,
+          `${homeTeam}\u0000${awayTeam}`,
+          priorPoints + futureWinPoints(homeTeam, match.stage)
+        );
+        setMaximum(
+          outcomes,
+          `${awayTeam}\u0000${homeTeam}`,
+          priorPoints + futureWinPoints(awayTeam, match.stage)
+        );
+      });
+    });
+
+    return Array.from(outcomes, ([teams, points]) => {
+      const [winner, loser] = teams.split("\u0000");
+      return { winner, loser, points };
+    });
+  }
+
+  function remainingMatchPotential(match, homeTeam, awayTeam) {
+    if (!match || match.status === "completed") {
+      return 0;
+    }
+
+    return Math.max(
+      futureWinPoints(homeTeam, match.stage),
+      futureWinPoints(awayTeam, match.stage)
+    );
+  }
+
+  const semifinals = matchesByStage.get("Semifinal") || [];
+  const finalMatch = matchesByStage.get("Final")?.[0];
+  const thirdPlaceMatch = matchesByStage.get("Third Place")?.[0];
+
+  if (semifinals.length !== 2 || !finalMatch) {
+    return 0;
+  }
+
+  const firstSemifinalOutcomes = semifinalOutcomes(semifinals[0]);
+  const secondSemifinalOutcomes = semifinalOutcomes(semifinals[1]);
+  let maximumPotential = 0;
+
+  firstSemifinalOutcomes.forEach((firstSemifinal) => {
+    secondSemifinalOutcomes.forEach((secondSemifinal) => {
+      const potential =
+        firstSemifinal.points +
+        secondSemifinal.points +
+        remainingMatchPotential(finalMatch, firstSemifinal.winner, secondSemifinal.winner) +
+        remainingMatchPotential(thirdPlaceMatch, firstSemifinal.loser, secondSemifinal.loser);
+
+      maximumPotential = Math.max(maximumPotential, potential);
+    });
+  });
+
+  return maximumPotential;
 }
 
 export function getRecentCompletedMatches(matches) {
