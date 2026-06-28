@@ -1,13 +1,16 @@
 import { managerForTeam, participants } from "../data/draft";
 import { worldCupGroups } from "../data/groups";
-import { manualMatches, groupBonuses } from "../data/manualResults";
+import { manualMatches, groupBonuses as manualGroupBonuses } from "../data/manualResults";
 import { flagForTeam } from "../data/teamFlags";
 import { fetchWorldCupMatches } from "../data/worldCupApi";
 import TodaysScoreboard from "./components/TodaysScoreboard";
 import {
+  calculateAutomaticGroupBonuses,
   calculateParticipantStandings,
+  calculateTeamsRemaining,
   calculateWorldCupGroupStandings,
   getRecentCompletedMatches,
+  isGroupStageComplete,
 } from "../data/scoring";
 
 export const dynamic = "force-dynamic";
@@ -94,8 +97,11 @@ export default async function Home() {
 
   const resultsMatches = mergeCompletedMatches(manualMatches, apiMatches);
   const draftScoringMatches = mergeDraftScoringMatches(manualMatches, apiMatches);
-  const standings = calculateParticipantStandings(participants, draftScoringMatches, groupBonuses);
   const groupStandings = calculateWorldCupGroupStandings(worldCupGroups, resultsMatches);
+  const automaticGroupBonuses = calculateAutomaticGroupBonuses(groupStandings);
+  const groupBonuses = { ...automaticGroupBonuses, ...manualGroupBonuses };
+  const groupStageComplete = isGroupStageComplete(groupStandings);
+  const standings = calculateParticipantStandings(participants, draftScoringMatches, groupBonuses);
   const recentMatches = getRecentCompletedMatches(resultsMatches);
   const liveMatches = draftScoringMatches.filter((match) => match.status === "live");
   const hasSoleLeader = standings.filter((participant) => participant.rank === 1).length === 1;
@@ -106,6 +112,11 @@ export default async function Home() {
     rank: participant.rank,
     groupGamesCompleted: activeGroupGamesForParticipant(participant.name, draftScoringMatches),
     totalGroupGames: participant.teams.length * 3,
+    teamsRemaining: calculateTeamsRemaining(
+      participant.teams.map((team) => team.name),
+      groupBonuses,
+      resultsMatches
+    ),
     totalPoints: participant.totalPoints,
   }));
   const shethManagers = ["Tej", "Rushil", "Jagat & Kiran", "Janey"];
@@ -217,7 +228,9 @@ export default async function Home() {
                   <tr className="border-b border-zinc-800">
                     <th className="px-3 py-2 font-semibold">Pos</th>
                     <th className="px-3 py-2 font-semibold">Team</th>
-                    <th className="px-3 py-2 text-center font-semibold">Group</th>
+                    <th className="px-3 py-2 text-center font-semibold">
+                      {groupStageComplete ? "Teams" : "Group"}
+                    </th>
                     <th className="px-3 py-2 text-right font-semibold">Pts</th>
                   </tr>
                 </thead>
@@ -231,7 +244,9 @@ export default async function Home() {
                         </a>
                       </td>
                       <td className="px-3 py-2 text-center tabular-nums text-zinc-400">
-                        {participant.groupGamesCompleted}/{participant.totalGroupGames}
+                        {groupStageComplete
+                          ? participant.teamsRemaining
+                          : `${participant.groupGamesCompleted}/${participant.totalGroupGames}`}
                       </td>
                       <td className="px-3 py-2 text-right font-semibold text-white">{participant.totalPoints}</td>
                     </tr>

@@ -114,6 +114,16 @@ function eventLabelsForTeam(details, teamId, predicate) {
     .filter(Boolean);
 }
 
+function penaltyScoreForTeam(competitor, details) {
+  if (competitor.shootoutScore !== undefined && competitor.shootoutScore !== null) {
+    return Number(competitor.shootoutScore);
+  }
+
+  return details.filter(
+    (detail) => detail.team?.id === competitor.team?.id && detail.shootout && detail.scoringPlay
+  ).length;
+}
+
 export function normalizeEspnEvent(event) {
   const competition = event.competitions?.[0] || {};
   const competitors = competition.competitors || [];
@@ -122,6 +132,14 @@ export function normalizeEspnEvent(event) {
   const homeTeam = displayTeamName(teamNameFromCompetitor(home));
   const awayTeam = displayTeamName(teamNameFromCompetitor(away));
   const details = competition.details || [];
+  const hasPenaltyShootout =
+    home.shootoutScore !== undefined ||
+    away.shootoutScore !== undefined ||
+    details.some((detail) => detail.shootout);
+  const hasExtraTime =
+    Number(competition.status?.period || 0) > 2 ||
+    Number(competition.status?.clock || 0) > 5400 ||
+    /AET|extra time/i.test(competition.status?.type?.detail || "");
 
   return {
     id: Number(event.id),
@@ -133,6 +151,12 @@ export function normalizeEspnEvent(event) {
     awayTeam,
     homeScore: Number(home.score || 0),
     awayScore: Number(away.score || 0),
+    homeWinner: home.winner === true,
+    awayWinner: away.winner === true,
+    hasExtraTime,
+    hasPenaltyShootout,
+    homePenaltyScore: penaltyScoreForTeam(home, details),
+    awayPenaltyScore: penaltyScoreForTeam(away, details),
     status: statusFromEspnCompetition(competition),
     timeElapsed: competition.status?.type?.shortDetail || competition.status?.displayClock,
     homeScorers: eventLabelsForTeam(details, home.team?.id, (detail) => detail.scoringPlay),

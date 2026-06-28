@@ -3,9 +3,15 @@ export function knockoutWinPoints(stage) {
     "Round of 32": 4,
     "Round of 16": 6,
     Quarterfinal: 8,
+    Quarterfinals: 8,
+    "Round of 8": 8,
     Semifinal: 10,
+    Semifinals: 10,
+    "Round of 4": 10,
     Final: 12,
+    Finals: 12,
     "Third Place": 3,
+    "Third-place Playoff": 3,
   };
 
   return pointsByStage[stage] || 0;
@@ -35,6 +41,28 @@ function isSameTeam(teamA, teamB) {
   return canonicalTeamName(teamA) === canonicalTeamName(teamB);
 }
 
+function bonusForTeam(teamName, groupBonuses) {
+  if (groupBonuses[teamName]) {
+    return groupBonuses[teamName];
+  }
+
+  return [...Object.entries(groupBonuses)]
+    .reverse()
+    .find(([bonusTeam]) => isSameTeam(bonusTeam, teamName))?.[1];
+}
+
+function compareGroupRows(teamA, teamB) {
+  if (teamB.points !== teamA.points) {
+    return teamB.points - teamA.points;
+  }
+
+  if (teamB.goalDifference !== teamA.goalDifference) {
+    return teamB.goalDifference - teamA.goalDifference;
+  }
+
+  return teamB.goalsFor - teamA.goalsFor;
+}
+
 export function getMatchWinner(match) {
   if (match.homeScore > match.awayScore) {
     return match.homeTeam;
@@ -52,6 +80,14 @@ export function getMatchWinner(match) {
     if (match.awayPenaltyScore > match.homePenaltyScore) {
       return match.awayTeam;
     }
+  }
+
+  if (match.homeWinner === true) {
+    return match.homeTeam;
+  }
+
+  if (match.awayWinner === true) {
+    return match.awayTeam;
   }
 
   return null;
@@ -141,7 +177,7 @@ export function calculateTeamPoints(teamName, matches, groupBonuses) {
       }
     });
 
-  const bonus = groupBonuses[teamName];
+  const bonus = bonusForTeam(teamName, groupBonuses);
 
   if (bonus?.groupFinish === 1) {
     points += 3;
@@ -244,23 +280,72 @@ export function calculateWorldCupGroupStandings(groups, matches) {
       return row;
     });
 
-    teams.sort((teamA, teamB) => {
-      if (teamB.points !== teamA.points) {
-        return teamB.points - teamA.points;
-      }
-
-      if (teamB.goalDifference !== teamA.goalDifference) {
-        return teamB.goalDifference - teamA.goalDifference;
-      }
-
-      return teamB.goalsFor - teamA.goalsFor;
-    });
+    teams.sort(compareGroupRows);
 
     return {
       ...group,
       teams,
     };
   });
+}
+
+export function isGroupStageComplete(groupStandings) {
+  return (
+    groupStandings.length > 0 &&
+    groupStandings.every((group) => group.teams.every((team) => team.played >= 3))
+  );
+}
+
+export function calculateAutomaticGroupBonuses(groupStandings) {
+  const bonuses = {};
+
+  groupStandings.forEach((group) => {
+    const groupIsComplete = group.teams.every((team) => team.played >= 3);
+
+    if (!groupIsComplete) {
+      return;
+    }
+
+    bonuses[group.teams[0].name] = { groupFinish: 1, advanced: true };
+    bonuses[group.teams[1].name] = { groupFinish: 2, advanced: true };
+  });
+
+  if (isGroupStageComplete(groupStandings)) {
+    groupStandings
+      .map((group) => group.teams[2])
+      .sort(compareGroupRows)
+      .slice(0, 8)
+      .forEach((team) => {
+        bonuses[team.name] = { advanced: true };
+      });
+  }
+
+  return bonuses;
+}
+
+export function calculateTeamsRemaining(teamNames, groupBonuses, matches) {
+  const advancingTeams = Object.entries(groupBonuses)
+    .filter(([, bonus]) => bonus.advanced || bonus.groupFinish === 1 || bonus.groupFinish === 2)
+    .map(([teamName]) => teamName);
+
+  const eliminatedTeams = matches
+    .filter((match) => match.status === "completed" && match.stage !== "Group Stage")
+    .map((match) => {
+      const winner = getMatchWinner(match);
+
+      if (!winner) {
+        return null;
+      }
+
+      return isSameTeam(winner, match.homeTeam) ? match.awayTeam : match.homeTeam;
+    })
+    .filter(Boolean);
+
+  return teamNames.filter(
+    (teamName) =>
+      advancingTeams.some((advancingTeam) => isSameTeam(advancingTeam, teamName)) &&
+      !eliminatedTeams.some((eliminatedTeam) => isSameTeam(eliminatedTeam, teamName))
+  ).length;
 }
 
 export function getRecentCompletedMatches(matches) {
