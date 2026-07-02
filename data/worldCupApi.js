@@ -68,7 +68,26 @@ function stageFromEspnEvent(event) {
     final: "Final",
   };
 
-  return stageBySlug[event.season?.slug] || event.season?.slug || "Group Stage";
+  const competition = event.competitions?.[0] || {};
+  const stageText = [
+    event.season?.slug,
+    event.seasonType?.name,
+    event.season?.type?.name,
+    ...(competition.notes || []).map((note) => note.headline),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (/round[ -]of[ -]32/.test(stageText)) return "Round of 32";
+  if (/round[ -]of[ -]16/.test(stageText)) return "Round of 16";
+  if (/quarter/.test(stageText)) return "Quarterfinal";
+  if (/semi/.test(stageText)) return "Semifinal";
+  if (/third|3rd/.test(stageText)) return "Third Place";
+  if (/\bfinal\b/.test(stageText)) return "Final";
+  if (/group/.test(stageText)) return "Group Stage";
+
+  return stageBySlug[event.season?.slug] || "Group Stage";
 }
 
 function statusFromEspnCompetition(competition) {

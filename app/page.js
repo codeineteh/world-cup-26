@@ -10,7 +10,6 @@ import {
   calculateRemainingPointPotential,
   calculateTeamsRemaining,
   calculateWorldCupGroupStandings,
-  getRecentCompletedMatches,
   isGroupStageComplete,
 } from "../data/scoring";
 
@@ -149,7 +148,6 @@ export default async function Home() {
       })),
     })
   );
-  const recentMatches = getRecentCompletedMatches(resultsMatches);
   const liveMatches = draftScoringMatches.filter((match) => match.status === "live");
   const hasSoleLeader = standings.filter((participant) => participant.rank === 1).length === 1;
   const summaryStandings = standings.map((participant) => {
@@ -374,53 +372,7 @@ export default async function Home() {
           </section>
         </div>
 
-        <div className="mb-8 grid gap-4 lg:grid-cols-[1.35fr_1fr]">
-          <TodaysScoreboard />
-
-          <section className="h-full rounded-lg border border-amber-300/30 bg-amber-950/30 p-4 shadow-lg shadow-black/20" aria-labelledby="recent-heading">
-            <h2 id="recent-heading" className="text-xl font-semibold text-amber-100">
-              Recent Completed Matches
-            </h2>
-            <div className="mt-4 space-y-3">
-              {recentMatches.length > 0 ? (
-                recentMatches.map((match) => (
-                <div key={match.id} className="rounded-lg border border-zinc-800 bg-zinc-950/95 p-3">
-                  <div className="flex items-center justify-between gap-3 text-sm text-zinc-400">
-                    <span>{match.stage}</span>
-                    {matchTag(match) && (
-                      <span className="rounded-full border border-emerald-500/30 px-2 py-0.5 text-xs font-semibold text-emerald-300">
-                        {matchTag(match)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="mt-2 grid grid-cols-[1fr_auto] gap-3">
-                    <div>
-                      <div className="font-semibold text-white">{match.homeTeam}</div>
-                      {managerForTeam(match.homeTeam) && (
-                        <div className="mt-0.5 text-xs font-medium text-zinc-500">{managerForTeam(match.homeTeam)}</div>
-                      )}
-                    </div>
-                    <div className="text-2xl font-bold tabular-nums text-white">{scoreDisplay(match, "home")}</div>
-                  </div>
-                  <div className="mt-2 grid grid-cols-[1fr_auto] gap-3">
-                    <div>
-                      <div className="font-semibold text-white">{match.awayTeam}</div>
-                      {managerForTeam(match.awayTeam) && (
-                        <div className="mt-0.5 text-xs font-medium text-zinc-500">{managerForTeam(match.awayTeam)}</div>
-                      )}
-                    </div>
-                    <div className="text-2xl font-bold tabular-nums text-white">{scoreDisplay(match, "away")}</div>
-                  </div>
-                </div>
-                ))
-              ) : (
-                <div className="rounded-lg border border-dashed border-amber-300/30 bg-zinc-950/80 p-4 text-sm text-zinc-400">
-                  No completed matches entered yet
-                </div>
-              )}
-            </div>
-          </section>
-        </div>
+        <TodaysScoreboard />
 
         <section className="space-y-4" aria-labelledby="standings-heading">
           <h2 id="standings-heading" className="text-xl font-semibold">
