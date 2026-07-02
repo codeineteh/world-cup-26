@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { managerForTeam } from "../../data/draft";
 import { flagForTeam } from "../../data/teamFlags";
 
@@ -183,8 +183,6 @@ function BracketSide({ side, rounds }) {
 }
 
 function LiveBracket({ matches }) {
-  const [isExpanded, setIsExpanded] = useState(false);
-  const bracketRef = useRef(null);
   const knockout = KNOCKOUT_ROUNDS.map((round) => ({
     ...round,
     matches: matches.filter((match) => match.stage === round.stage).sort((a, b) => new Date(a.startDate) - new Date(b.startDate)),
@@ -204,68 +202,26 @@ function LiveBracket({ matches }) {
   }));
   const final = knockout.find((round) => round.stage === "Final")?.matches[0];
 
-  useEffect(() => {
-    function closeOnEscape(event) {
-      if (event.key === "Escape" && isExpanded) setIsExpanded(false);
-    }
-
-    function syncNativeFullscreen() {
-      if (!document.fullscreenElement) setIsExpanded(false);
-    }
-
-    document.body.style.overflow = isExpanded ? "hidden" : "";
-    window.addEventListener("keydown", closeOnEscape);
-    document.addEventListener("fullscreenchange", syncNativeFullscreen);
-
-    return () => {
-      document.body.style.overflow = "";
-      window.removeEventListener("keydown", closeOnEscape);
-      document.removeEventListener("fullscreenchange", syncNativeFullscreen);
-    };
-  }, [isExpanded]);
-
-  async function toggleFullscreen() {
-    if (isExpanded) {
-      setIsExpanded(false);
-      if (document.fullscreenElement) await document.exitFullscreen?.();
-      return;
-    }
-
-    setIsExpanded(true);
-    try {
-      await bracketRef.current?.requestFullscreen?.();
-    } catch {
-      // The fixed overlay remains available when native fullscreen is blocked.
-    }
-  }
-
   return (
-    <section ref={bracketRef} className={`bracket-shell mt-4 rounded-lg border border-emerald-300/30 bg-zinc-900/95 p-4 shadow-lg shadow-black/20 ${isExpanded ? "bracket-shell-expanded" : ""}`} aria-labelledby="bracket-heading">
+    <section className="mt-4 rounded-lg border border-emerald-300/30 bg-zinc-900/90 p-4 shadow-lg shadow-black/20" aria-labelledby="bracket-heading">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 id="bracket-heading" className="text-xl font-semibold text-emerald-100">Live Knockout Bracket</h2>
           <p className="mt-1 text-xs text-zinc-500">Slots and scores update automatically from ESPN.</p>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-300"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Live data</span>
-          <button type="button" onClick={toggleFullscreen} className="rounded-md border border-zinc-700 bg-zinc-950 px-2.5 py-1.5 text-xs font-semibold text-zinc-200 transition hover:border-emerald-400/60 hover:text-white" aria-pressed={isExpanded}>
-            {isExpanded ? "Exit full screen" : "Full screen"}
-          </button>
-        </div>
+        <span className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-300"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Live data</span>
       </div>
       {hasFixtures ? (
-        <div className="bracket-viewport mt-4">
-          <div className="bracket-layout">
-            <BracketSide side="left" rounds={sides[0].rounds} />
-            <div className="bracket-center">
-              <div className="w-full">
-                <h3 className="bracket-round-heading text-amber-200">Final</h3>
-                {hasKnownTeam(final) && <BracketMatch match={final} />}
-                {hasKnownTeam(thirdPlace) && <div className="bracket-third-place"><div className="mb-1 text-center text-[10px] font-bold uppercase tracking-wider text-zinc-500">Third place</div><BracketMatch match={thirdPlace} /></div>}
-              </div>
+        <div className="bracket-layout mt-4">
+          <BracketSide side="left" rounds={sides[0].rounds} />
+          <div className="bracket-center">
+            <div className="w-full">
+              <h3 className="bracket-round-heading text-amber-200">Final</h3>
+              {hasKnownTeam(final) && <BracketMatch match={final} />}
+              {hasKnownTeam(thirdPlace) && <div className="bracket-third-place"><div className="mb-1 text-center text-[10px] font-bold uppercase tracking-wider text-zinc-500">Third place</div><BracketMatch match={thirdPlace} /></div>}
             </div>
-            <BracketSide side="right" rounds={sides[1].rounds} />
           </div>
+          <BracketSide side="right" rounds={sides[1].rounds} />
         </div>
       ) : <div className="mt-4 rounded-lg border border-dashed border-emerald-300/20 bg-zinc-950/70 p-4 text-sm text-zinc-400">Knockout fixtures will appear here when ESPN publishes the bracket.</div>}
     </section>
