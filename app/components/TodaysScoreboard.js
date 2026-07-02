@@ -205,23 +205,22 @@ function LiveBracket({ matches }) {
   return (
     <section className="mt-4 rounded-lg border border-emerald-300/30 bg-zinc-900/90 p-4 shadow-lg shadow-black/20" aria-labelledby="bracket-heading">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 id="bracket-heading" className="text-xl font-semibold text-emerald-100">Live Knockout Bracket</h2>
-          <p className="mt-1 text-xs text-zinc-500">Slots and scores update automatically from ESPN.</p>
-        </div>
+        <h2 id="bracket-heading" className="text-xl font-semibold text-emerald-100">Bracket</h2>
         <span className="inline-flex items-center gap-2 text-xs font-semibold text-emerald-300"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Live data</span>
       </div>
       {hasFixtures ? (
-        <div className="bracket-layout mt-4">
-          <BracketSide side="left" rounds={sides[0].rounds} />
-          <div className="bracket-center">
-            <div className="w-full">
-              <h3 className="bracket-round-heading text-amber-200">Final</h3>
-              {hasKnownTeam(final) && <BracketMatch match={final} />}
-              {hasKnownTeam(thirdPlace) && <div className="bracket-third-place"><div className="mb-1 text-center text-[10px] font-bold uppercase tracking-wider text-zinc-500">Third place</div><BracketMatch match={thirdPlace} /></div>}
+        <div className="bracket-viewport mt-4">
+          <div className="bracket-layout">
+            <BracketSide side="left" rounds={sides[0].rounds} />
+            <div className="bracket-center">
+              <div className="w-full">
+                <h3 className="bracket-round-heading text-amber-200">Final</h3>
+                {hasKnownTeam(final) && <BracketMatch match={final} />}
+                {hasKnownTeam(thirdPlace) && <div className="bracket-third-place"><div className="mb-1 text-center text-[10px] font-bold uppercase tracking-wider text-zinc-500">Third place</div><BracketMatch match={thirdPlace} /></div>}
+              </div>
             </div>
+            <BracketSide side="right" rounds={sides[1].rounds} />
           </div>
-          <BracketSide side="right" rounds={sides[1].rounds} />
         </div>
       ) : <div className="mt-4 rounded-lg border border-dashed border-emerald-300/20 bg-zinc-950/70 p-4 text-sm text-zinc-400">Knockout fixtures will appear here when ESPN publishes the bracket.</div>}
     </section>
